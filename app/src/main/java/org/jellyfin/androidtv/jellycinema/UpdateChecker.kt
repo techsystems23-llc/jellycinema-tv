@@ -45,6 +45,8 @@ object UpdateChecker {
     }
 
     suspend fun check(context: Context, serverUrl: String?, force: Boolean = false): Result {
+        // Play Store builds are updated by the store only
+        if (!BuildConfig.SELF_UPDATE) return Result.Skipped
         val app = context.applicationContext
         val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()

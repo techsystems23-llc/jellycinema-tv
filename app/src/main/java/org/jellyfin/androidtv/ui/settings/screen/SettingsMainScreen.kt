@@ -115,7 +115,7 @@ fun SettingsMainScreen() {
 			)
 		}
 
-		item {
+		if (BuildConfig.SELF_UPDATE) item {
 			// Jelly Cinema: update the app from the Jellyfin server it is connected to
 			val context = LocalContext.current
 			val api = koinInject<ApiClient>()

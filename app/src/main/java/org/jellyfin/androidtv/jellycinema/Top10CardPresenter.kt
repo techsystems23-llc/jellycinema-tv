@@ -50,7 +50,7 @@ import org.koin.compose.koinInject
 import java.util.UUID
 
 /**
- * Top 10 card, sized like Netflix's TV Top 10 row: a big outlined rank number with the poster beside it,
+ * Top 10 card: a big outlined rank number with the poster beside it,
  * about five and a half titles across a 1080p screen.
  * [ranks] maps item id to its place (1-10) in the row.
  */
@@ -117,7 +117,7 @@ private fun Top10Card(item: BaseRowItem?, rank: Int, focused: Boolean) {
 			.width(Top10CardPresenter.NUMBER_WIDTH + Top10CardPresenter.POSTER_WIDTH - overlap)
 			.height(Top10CardPresenter.POSTER_HEIGHT),
 	) {
-		// rank number, Netflix style: heavy numerals, near-black fill with a light outline,
+		// rank number: heavy numerals, near-black fill with a light outline,
 		// standing on the poster's bottom line with the poster tucked slightly over its right edge
 		if (rank > 0) {
 			val size = if (rank >= 10) 80.sp else 100.sp
@@ -132,7 +132,7 @@ private fun Top10Card(item: BaseRowItem?, rank: Int, focused: Boolean) {
 					.width(Top10CardPresenter.NUMBER_WIDTH)
 					.offset(y = (-2).dp) // the outline's half-width, so the outline itself ends on the poster's bottom
 					.graphicsLayer {
-						// a little narrower, like Netflix's numerals; "10" squeezed more so it fits
+						// a little narrower; "10" squeezed more so it fits
 						scaleX = if (rank >= 10) 0.66f else 0.84f
 						transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 1f)
 					},

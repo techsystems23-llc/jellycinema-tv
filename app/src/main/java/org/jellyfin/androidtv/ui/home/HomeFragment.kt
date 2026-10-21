@@ -77,7 +77,7 @@ class HomeFragment : Fragment() {
 		val cfg = jellyCinema.config
 		val showHero = cfg.heroEnabled && slides.isNotEmpty()
 		val chromeAlpha by animateFloatAsState(if (theater) 0f else 1f, tween(900), label = "theater")
-		// while browsing the rows the banner shrinks (like Netflix) so the rows and their titles have room
+		// while browsing the rows the banner shrinks so the rows and their titles have room
 		var rowsFocused by remember { mutableStateOf(false) }
 		val heroHeight by androidx.compose.animation.core.animateDpAsState(
 			when { theater -> 400.dp; rowsFocused -> 140.dp; else -> 222.dp }, tween(350), label = "hero-height")

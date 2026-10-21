@@ -67,8 +67,19 @@ android {
 			resValue("string", "app_name", "@string/app_name_release")
 
 			buildConfigField("boolean", "DEVELOPMENT", "false")
+			// Sideloaded builds can update themselves from the Jellyfin server
+			buildConfigField("boolean", "SELF_UPDATE", "true")
 
 			signingConfig = signingConfigs.findByName("release")
+		}
+
+		// Google Play build: same as release, but no self-update and no install-apps permission,
+		// because Play doesn't allow apps to update themselves outside the store.
+		// Build with ./gradlew :app:bundlePlay
+		create("play") {
+			initWith(getByName("release"))
+			matchingFallbacks += listOf("release")
+			buildConfigField("boolean", "SELF_UPDATE", "false")
 		}
 
 		debug {
@@ -84,6 +95,7 @@ android {
 			resValue("string", "app_name", "@string/app_name_debug")
 
 			buildConfigField("boolean", "DEVELOPMENT", (defaultConfig.versionCode!! < 100).toString())
+			buildConfigField("boolean", "SELF_UPDATE", "true")
 		}
 	}
 

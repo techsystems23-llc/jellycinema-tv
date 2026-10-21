@@ -1,7 +1,7 @@
 # Jelly Cinema TV
 
 The Jelly Cinema home screen as a real Android TV / Google TV app: big banner with logos, ratings
-and muted trailers, Theater Mode, Top 10 Movies / Shows with Netflix-style numbers, weekend family
+and muted trailers, Theater Mode, Top 10 Movies / Shows with big ranked numbers, weekend family
 Picks, seasonal effects (leaves and bats, snow, ...) and rows, "Because You Watched", genre,
 Collections and Watch Again rows. It works on any Jellyfin server, with or without the Jelly
 Cinema plugin, and only ever shows what the signed-in person may watch.
@@ -31,6 +31,19 @@ keep `jellycinema-tv.jks` and its password safe — every update must be signed 
 ```
 
 Output: `app/build/outputs/apk/release/jellycinema-tv-release.apk` (application id `app.jellycinema.tv`).
+
+## Google Play build
+
+Play doesn't allow apps to update themselves outside the store. `./gradlew :app:bundlePlay` (same signing
+properties as above) makes a Play build with self-update turned off and without the install-apps
+permission. `assembleRelease` stays the sideload build that updates itself from the server.
+
+## Licence
+
+GPL-2.0, like the Jellyfin Android TV app it is based on (see `LICENSE` and `README.jellyfin.md`).
+Anyone who receives the app is entitled to its complete source code under the same licence.
+Jelly Cinema is not affiliated with or endorsed by the Jellyfin project. Don't use the Jellyfin
+logo as the app's own icon or branding.
 
 ## Updates
 
