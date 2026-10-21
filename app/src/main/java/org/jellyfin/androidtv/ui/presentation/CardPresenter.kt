@@ -62,7 +62,7 @@ class CardPresenter(
 ) : Presenter() {
 	constructor(showInfo: Boolean, imageType: ImageType, staticHeight: Int) : this(showInfo, imageType, staticHeight, false)
 	constructor(showInfo: Boolean, staticHeight: Int) : this(showInfo, ImageType.POSTER, staticHeight)
-	constructor(showInfo: Boolean) : this(showInfo, 126)
+	constructor(showInfo: Boolean) : this(showInfo, 110)
 	constructor() : this(true)
 
 	override fun onCreateViewHolder(parent: ViewGroup): ViewHolder {
@@ -300,8 +300,8 @@ private fun CardViewHolderContent(
 
 	val size = when (item.staticHeight) {
 		true -> DpSize(staticHeight.dp * aspectRatio, staticHeight.dp)
-		false if (aspectRatio > 1f) -> DpSize(99.dp * aspectRatio, 99.dp)
-		else -> DpSize(126.dp * aspectRatio, 126.dp)
+		false if (aspectRatio > 1f) -> DpSize(84.dp * aspectRatio, 84.dp)
+		else -> DpSize(110.dp * aspectRatio, 110.dp)
 	}
 
 	val usePreview = displayConfig.overrideShowInfo ?: showInfo

@@ -15,7 +15,7 @@ class HomeFragmentViewsRow(
 ) : HomeFragmentRow {
 	private companion object {
 		val smallCardPresenter = CardPresenter(true, 75)
-		val largeCardPresenter = CardPresenter(true, 126)
+		val largeCardPresenter = CardPresenter(true, 84)
 	}
 
 	override fun addToRowsAdapter(context: Context, cardPresenter: CardPresenter, rowsAdapter: MutableObjectAdapter<Row>) {

@@ -196,6 +196,12 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 		mediaManager.addAudioEventListener(this)
 	}
 
+	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+		super.onViewCreated(view, savedInstanceState)
+		// Jelly Cinema: keep the highlighted row (with its title) near the top of the rows area
+		setAlignment((12 * resources.displayMetrics.density).toInt())
+	}
+
 	override fun onKey(v: View?, keyCode: Int, event: KeyEvent?): Boolean {
 		if (event?.action != KeyEvent.ACTION_UP) return false
 		return keyProcessor.handleKey(keyCode, currentItem, activity)

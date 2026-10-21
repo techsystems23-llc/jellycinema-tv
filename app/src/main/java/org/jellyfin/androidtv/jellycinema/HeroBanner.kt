@@ -370,6 +370,7 @@ fun HeroInfo(
 	state: JellyCinemaHeroState,
 	playFocusRequester: FocusRequester,
 	modifier: Modifier = Modifier,
+	compact: Boolean = false,
 	onBannerFocused: () -> Unit = {},
 ) {
 	val api = koinInject<ApiClient>()
@@ -382,7 +383,7 @@ fun HeroInfo(
 	val preview by state.preview.collectAsState()
 	val theater by state.theater.collectAsState()
 	val item = preview ?: slides.getOrNull(index) ?: return
-	val buttonsAlpha by animateFloatAsState(if (theater) 0f else 1f, tween(900), label = "hero-buttons")
+	val buttonsAlpha by animateFloatAsState(if (theater || compact) 0f else 1f, tween(400), label = "hero-buttons")
 
 	var favorites by remember { mutableStateOf<Map<UUID, Boolean>>(emptyMap()) }
 	val isFavorite = favorites[item.id] ?: (item.userData?.isFavorite == true)
@@ -404,7 +405,7 @@ fun HeroInfo(
 						contentScale = ContentScale.Fit,
 						alignment = Alignment.BottomStart,
 						onError = { logoFailed = true },
-						modifier = Modifier.heightIn(max = 92.dp).widthIn(max = 330.dp),
+						modifier = Modifier.heightIn(max = if (compact) 64.dp else 92.dp).widthIn(max = if (compact) 260.dp else 330.dp),
 					)
 				} else {
 					Text(
@@ -432,17 +433,18 @@ fun HeroInfo(
 					Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis, style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White))
 				}
 				Spacer(Modifier.height(6.dp))
-				Text(
+				if (!compact) Text(
 					shown.overview ?: "", maxLines = 2, overflow = TextOverflow.Ellipsis,
 					style = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, color = Color.White.copy(alpha = 0.82f)),
 				)
 			}
 		}
 
-		Spacer(Modifier.height(16.dp))
+		Spacer(Modifier.height(if (compact) 0.dp else 16.dp))
 		val resume = (item.userData?.playbackPositionTicks ?: 0L) > 0L
 		Row(
 			modifier = Modifier
+				.then(if (compact) Modifier.height(0.dp) else Modifier)
 				.alpha(buttonsAlpha)
 				.onFocusChanged { if (it.hasFocus) onBannerFocused() }
 				.onPreviewKeyEvent { e ->

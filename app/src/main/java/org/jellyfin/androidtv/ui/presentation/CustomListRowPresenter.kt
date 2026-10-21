@@ -8,7 +8,7 @@ import androidx.leanback.widget.RowPresenter
 
 open class CustomListRowPresenter @JvmOverloads constructor(
 	private val topPadding: Int? = null
-) : ListRowPresenter() {
+) : ListRowPresenter(androidx.leanback.widget.FocusHighlight.ZOOM_FACTOR_XSMALL) {
 	init {
 		headerPresenter = CustomRowHeaderPresenter()
 	}
@@ -19,6 +19,12 @@ open class CustomListRowPresenter @JvmOverloads constructor(
 
 	override fun onBindRowViewHolder(holder: RowPresenter.ViewHolder, item: Any) {
 		super.onBindRowViewHolder(holder, item)
+
+		// Jelly Cinema: a little room between cards so a highlighted card never covers its neighbour
+		(holder as? ListRowPresenter.ViewHolder)?.gridView?.let { grid ->
+			val gap = (12 * grid.resources.displayMetrics.density).toInt()
+			if (grid.horizontalSpacing != gap) grid.horizontalSpacing = gap
+		}
 
 		val view = holder.view?.parent as? View ?: return
 		if (topPadding != null) view.setPadding(view.paddingLeft, topPadding, view.paddingRight, view.paddingBottom)

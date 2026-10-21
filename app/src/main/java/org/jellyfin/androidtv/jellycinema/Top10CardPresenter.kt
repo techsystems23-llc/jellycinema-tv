@@ -54,9 +54,9 @@ import java.util.UUID
  */
 class Top10CardPresenter(private val ranks: Map<UUID, Int>) : Presenter() {
 	companion object {
-		val POSTER_HEIGHT = 126.dp
-		val POSTER_WIDTH = 84.dp     // 2:3
-		val NUMBER_WIDTH = 60.dp
+		val POSTER_HEIGHT = 110.dp
+		val POSTER_WIDTH = 73.dp     // 2:3
+		val NUMBER_WIDTH = 54.dp
 	}
 
 	override fun onCreateViewHolder(parent: ViewGroup): ViewHolder {
@@ -102,7 +102,7 @@ class Top10CardPresenter(private val ranks: Map<UUID, Int>) : Presenter() {
 @Composable
 private fun Top10Card(item: BaseRowItem?, rank: Int, focused: Boolean) {
 	val api = koinInject<ApiClient>()
-	val scale by animateFloatAsState(if (focused) 1.08f else 1f, label = "top10-scale")
+	val scale by animateFloatAsState(1f, label = "top10-scale")
 	val base = item?.baseItem
 	Row(
 		modifier = Modifier
@@ -116,7 +116,7 @@ private fun Top10Card(item: BaseRowItem?, rank: Int, focused: Boolean) {
 			contentAlignment = Alignment.BottomEnd,
 		) {
 			if (rank > 0) {
-				val size = if (rank >= 10) 84.sp else 112.sp
+				val size = if (rank >= 10) 74.sp else 98.sp
 				val style = TextStyle(fontSize = size, fontWeight = FontWeight.Black, letterSpacing = (-5).sp, lineHeight = size)
 				Text(text = rank.toString(), style = style.copy(color = Color.White.copy(alpha = 0.92f), drawStyle = Stroke(width = 5f)),
 					modifier = Modifier.offset(x = 10.dp, y = 18.dp))

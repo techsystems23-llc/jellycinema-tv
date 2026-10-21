@@ -34,6 +34,7 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.compose.AndroidFragment
 import androidx.fragment.compose.content
@@ -75,6 +76,10 @@ class HomeFragment : Fragment() {
 		val cfg = jellyCinema.config
 		val showHero = cfg.heroEnabled && slides.isNotEmpty()
 		val chromeAlpha by animateFloatAsState(if (theater) 0f else 1f, tween(900), label = "theater")
+		// while browsing the rows the banner shrinks (like Netflix) so the rows and their titles have room
+		var rowsFocused by remember { mutableStateOf(false) }
+		val heroHeight by androidx.compose.animation.core.animateDpAsState(
+			when { theater -> 400.dp; rowsFocused -> 150.dp; else -> 248.dp }, tween(350), label = "hero-height")
 
 		// first focus: the banner's Play button once titles are in, else the rows
 		var focusedOnce by remember { mutableStateOf(false) }
@@ -124,7 +129,8 @@ class HomeFragment : Fragment() {
 				if (showHero) HeroInfo(
 					state = heroState,
 					playFocusRequester = playFocusRequester,
-					modifier = Modifier.fillMaxWidth().height(if (theater) 400.dp else 248.dp),
+					modifier = Modifier.fillMaxWidth().height(heroHeight),
+					compact = rowsFocused,
 					onBannerFocused = {
 						heroState.selected.value = null
 						heroState.preview.value = null
@@ -138,6 +144,7 @@ class HomeFragment : Fragment() {
 				AndroidFragment<HomeRowsFragment>(
 					modifier = Modifier
 						.alpha(chromeAlpha)
+						.onFocusChanged { rowsFocused = it.hasFocus }
 						.focusGroup()
 						.focusRequester(rowsFocusRequester)
 						.focusProperties {
@@ -158,6 +165,9 @@ class HomeFragment : Fragment() {
 					}
 				)
 			}
+
+			// seasonal falling leaves, bats, snow... over the whole screen
+			org.jellyfin.androidtv.jellycinema.SeasonalEffects()
 		}
 	}
 
