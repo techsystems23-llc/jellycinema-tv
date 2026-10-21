@@ -252,18 +252,25 @@ private fun BoxScope.TrailerView(videoIds: List<String>, baseUrl: String?, onPla
 				settings.javaScriptEnabled = true
 				settings.mediaPlaybackRequiresUserGesture = false
 				settings.domStorageEnabled = true
-				webChromeClient = WebChromeClient()
+				webChromeClient = object : WebChromeClient() {
+					override fun onConsoleMessage(m: android.webkit.ConsoleMessage): Boolean {
+						android.util.Log.i("JellyCinemaTrailer", "console: ${m.message()} @${m.sourceId()}:${m.lineNumber()}")
+						return true
+					}
+				}
 				webViewClient = WebViewClient()
 				val main = Handler(Looper.getMainLooper())
 				var which = 0
 				addJavascriptInterface(object {
 					@JavascriptInterface fun state(s: Int) = main.post {
+						android.util.Log.i("JellyCinemaTrailer", "youtube state $s for ${videoIds.getOrNull(which)}")
 						when (s) {
 							1 -> { playing = true; onPlaying(true) }
 							0 -> { playing = false; onPlaying(false); onFinished() }
 						}
 					}
 					@JavascriptInterface fun error(code: Int) = main.post {
+						android.util.Log.w("JellyCinemaTrailer", "youtube error $code for ${videoIds.getOrNull(which)}")
 						// embedding refused or removed: try the title's next trailer, else just keep the picture
 						Timber.i("Jelly Cinema trailer %s refused (%d)", videoIds.getOrNull(which), code)
 						which++
@@ -309,6 +316,7 @@ private suspend fun resolveTrailer(api: ApiClient, item: BaseItemDto): TrailerSo
 		runCatching { api.userLibraryApi.getItem(itemId = item.seriesId!!).content }.getOrNull() ?: item else item
 	val local = if ((target.localTrailerCount ?: 0) > 0 || target.localTrailerCount == null)
 		runCatching { api.userLibraryApi.getLocalTrailers(itemId = target.id).content.firstOrNull() }.getOrNull() else null
+	android.util.Log.i("JellyCinemaTrailer", "${target.name}: local=${local?.id} youtube=${youTubeIds(target)} remote=${target.remoteTrailers?.size}")
 	if (local != null) return@withContext TrailerSource.Local(api.videosApi.getVideoStreamUrl(itemId = local.id, static = true))
 	val ids = youTubeIds(target)
 	if (ids.isNotEmpty()) TrailerSource.YouTube(ids) else TrailerSource.None
@@ -405,7 +413,7 @@ fun HeroInfo(
 						contentScale = ContentScale.Fit,
 						alignment = Alignment.BottomStart,
 						onError = { logoFailed = true },
-						modifier = Modifier.heightIn(max = if (compact) 64.dp else 92.dp).widthIn(max = if (compact) 260.dp else 330.dp),
+						modifier = Modifier.heightIn(max = if (compact) 60.dp else 80.dp).widthIn(max = if (compact) 260.dp else 330.dp),
 					)
 				} else {
 					Text(

@@ -72,6 +72,7 @@ class CardPresenter(
 			setViewTreeSavedStateRegistryOwner(parent.findViewTreeSavedStateRegistryOwner())
 			isFocusable = true
 			isFocusableInTouchMode = true
+			if (android.os.Build.VERSION.SDK_INT >= 26) defaultFocusHighlightEnabled = false
 
 			setOnLongClickListener {
 				context.getActivity()?.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MENU)) ?: false
