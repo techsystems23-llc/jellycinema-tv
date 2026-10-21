@@ -159,6 +159,7 @@ dependencies {
 
 	// Media players
 	implementation(libs.androidx.media3.exoplayer)
+	implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.5")
 	implementation(libs.androidx.media3.datasource.okhttp)
 	implementation(libs.androidx.media3.exoplayer.hls)
 	implementation(libs.androidx.media3.ui)

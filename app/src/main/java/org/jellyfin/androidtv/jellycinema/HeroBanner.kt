@@ -160,12 +160,12 @@ fun HeroBackdrop(state: JellyCinemaHeroState, modifier: Modifier = Modifier) {
 	val preview by state.preview.collectAsState()
 	val theater by state.theater.collectAsState()
 	val current = preview ?: slides.getOrNull(index)
-	val trailerOn by state.trailerPlaying.collectAsState()
+	val trailerOn by state.trailerVisible.collectAsState()
 	val pictureAlpha by animateFloatAsState(if (trailerOn) 0f else 1f, tween(1200), label = "picture-alpha")
 
 	// No background colour and no layers under the trailer: many TVs show hardware video *behind* the
 	// app window through a see-through hole, which anything opaque underneath would cover up.
-	Box(modifier.fillMaxSize()) {
+	Box(modifier.fillMaxSize().background(JellyCinemaTheme.background)) {
 		AnimatedContent(
 			targetState = current,
 			transitionSpec = { fadeIn(tween(900)) togetherWith fadeOut(tween(900)) },
@@ -193,6 +193,7 @@ fun HeroBackdrop(state: JellyCinemaHeroState, modifier: Modifier = Modifier) {
 			var source by remember(trailerItem.id) { mutableStateOf<TrailerSource?>(null) }
 			LaunchedEffect(trailerItem.id) {
 				state.trailerPlaying.value = false
+				state.trailerVisible.value = false
 				delay(cfg.heroTrailerDelaySeconds * 1000L)
 				source = resolveTrailer(api, trailerItem)
 			}
@@ -203,7 +204,8 @@ fun HeroBackdrop(state: JellyCinemaHeroState, modifier: Modifier = Modifier) {
 			}
 			when (val src = source) {
 				is TrailerSource.Local -> LocalTrailerView(src.url, cfg.trailerMaxSeconds, onPlaying, onFinished,
-					onFailed = { source = youTubeIds(trailerItem).takeIf { it.isNotEmpty() }?.let { TrailerSource.YouTube(it) } ?: TrailerSource.None })
+					onVisible = { state.trailerVisible.value = it },
+					onFailed = { source = src.fallback.takeIf { it.isNotEmpty() }?.let { TrailerSource.YouTube(it) } ?: TrailerSource.None })
 				is TrailerSource.YouTube -> TrailerView(src.ids, api.baseUrl, onPlaying, onFinished)
 				else -> Unit
 			}
@@ -309,7 +311,8 @@ function onYouTubeIframeAPIReady(){
 """.trimIndent()
 
 private sealed interface TrailerSource {
-	data class Local(val url: String) : TrailerSource
+	/** A video the app's own player shows; [fallback] = YouTube ids for the web player if it can't. */
+	data class Local(val url: String, val fallback: List<String> = emptyList()) : TrailerSource
 	data class YouTube(val ids: List<String>) : TrailerSource
 	data object None : TrailerSource
 }
@@ -323,12 +326,18 @@ private suspend fun resolveTrailer(api: ApiClient, item: BaseItemDto): TrailerSo
 	JellyCinemaDiagnostics.trailer("${target.name}: local=${local?.id} youtube=${youTubeIds(target)} remote=${target.remoteTrailers?.size}")
 	if (local != null) return@withContext TrailerSource.Local(api.videosApi.getVideoStreamUrl(itemId = local.id, static = true))
 	val ids = youTubeIds(target)
+	// YouTube trailers: get the plain video so the app's own player shows it in the banner
+	for (id in ids.take(3)) {
+		val url = YouTubeStreams.videoUrl(id) ?: continue
+		JellyCinemaDiagnostics.trailer("${target.name}: playing YouTube trailer $id")
+		return@withContext TrailerSource.Local(url, ids)
+	}
 	if (ids.isNotEmpty()) TrailerSource.YouTube(ids) else TrailerSource.None
 }
 
 /** A trailer file from the library, muted, filling the banner. */
 @Composable
-private fun BoxScope.LocalTrailerView(url: String, maxSeconds: Int, onPlaying: (Boolean) -> Unit, onFinished: () -> Unit, onFailed: () -> Unit) {
+private fun BoxScope.LocalTrailerView(url: String, maxSeconds: Int, onPlaying: (Boolean) -> Unit, onFinished: () -> Unit, onVisible: (Boolean) -> Unit, onFailed: () -> Unit) {
 	val context = LocalContext.current
 	var playing by remember { mutableStateOf(false) }
 	val alpha by animateFloatAsState(if (playing) 1f else 0f, tween(1200), label = "local-trailer-alpha")
@@ -344,18 +353,23 @@ private fun BoxScope.LocalTrailerView(url: String, maxSeconds: Int, onPlaying: (
 	DisposableEffect(player) {
 		val listener = object : Player.Listener {
 			override fun onIsPlayingChanged(isPlaying: Boolean) {
-				if (isPlaying) { playing = true; onPlaying(true) }
+				if (isPlaying) onPlaying(true)
+			}
+			override fun onRenderedFirstFrame() {
+				// only now hide the picture: the trailer is really on screen
+				playing = true; onVisible(true)
+				JellyCinemaDiagnostics.trailer("Trailer showing in the banner")
 			}
 			override fun onPlaybackStateChanged(state: Int) {
-				if (state == Player.STATE_ENDED) { playing = false; onPlaying(false); onFinished() }
+				if (state == Player.STATE_ENDED) { playing = false; onVisible(false); onPlaying(false); onFinished() }
 			}
 			override fun onPlayerError(error: PlaybackException) {
-				JellyCinemaDiagnostics.trailer("Trailer file couldn't play: ${error.errorCodeName}")
-				playing = false; onPlaying(false); onFailed()
+				JellyCinemaDiagnostics.trailer("Trailer couldn't play: ${error.errorCodeName}")
+				playing = false; onVisible(false); onPlaying(false); onFailed()
 			}
 		}
 		player.addListener(listener)
-		onDispose { player.removeListener(listener); player.release(); onPlaying(false) }
+		onDispose { player.removeListener(listener); player.release(); onVisible(false); onPlaying(false) }
 	}
 	LaunchedEffect(playing) {
 		if (playing) { delay(maxSeconds * 1000L); onFinished() }

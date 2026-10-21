@@ -34,6 +34,9 @@ class JellyCinemaHeroState {
 	/** A trailer is playing on the current slide (slide waits for it). */
 	val trailerPlaying = MutableStateFlow(false)
 
+	/** The trailer's picture is on screen (the backdrop picture fades out). */
+	val trailerVisible = MutableStateFlow(false)
+
 	@Volatile
 	var lastInput: Long = System.currentTimeMillis()
 		private set

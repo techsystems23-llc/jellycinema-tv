@@ -57,8 +57,8 @@ class Top10CardPresenter(private val ranks: Map<UUID, Int>) : Presenter() {
 	companion object {
 		val POSTER_HEIGHT = 110.dp
 		val POSTER_WIDTH = 73.dp     // 2:3
-		val NUMBER_WIDTH = 78.dp
-		val OVERLAP = 12.dp          // the poster just touches the number's right edge
+		val NUMBER_WIDTH = 68.dp
+		val OVERLAP = (-4).dp          // the poster just touches the number's right edge
 	}
 
 	override fun onCreateViewHolder(parent: ViewGroup): ViewHolder {
@@ -119,7 +119,7 @@ private fun Top10Card(item: BaseRowItem?, rank: Int, focused: Boolean) {
 		// rank number, Netflix style: heavy numerals, near-black fill with a light outline,
 		// standing on the poster's bottom line with the poster tucked slightly over its right edge
 		if (rank > 0) {
-			val size = if (rank >= 10) 96.sp else 118.sp
+			val size = if (rank >= 10) 80.sp else 100.sp
 			val style = TextStyle(
 				fontFamily = RankFont, fontSize = size, lineHeight = size,
 				letterSpacing = if (rank >= 10) (-10).sp else 0.sp,
@@ -135,7 +135,7 @@ private fun Top10Card(item: BaseRowItem?, rank: Int, focused: Boolean) {
 					.width(Top10CardPresenter.NUMBER_WIDTH)
 					.graphicsLayer {
 						// a little narrower, like Netflix's numerals; "10" squeezed more so it fits
-						scaleX = if (rank >= 10) 0.62f else 0.84f
+						scaleX = if (rank >= 10) 0.66f else 0.84f
 						transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 1f)
 					},
 				contentAlignment = Alignment.BottomEnd,

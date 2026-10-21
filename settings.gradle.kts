@@ -26,6 +26,11 @@ dependencyResolutionManagement {
 		mavenCentral()
 		google()
 
+		// Jelly Cinema: NewPipe Extractor (plays YouTube trailers in the app's own video player)
+		maven("https://jitpack.io") {
+			content { includeGroup("com.github.TeamNewPipe") }
+		}
+
 		// Jellyfin SDK
 		mavenLocal {
 			content {

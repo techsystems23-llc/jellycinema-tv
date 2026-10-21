@@ -55,6 +55,7 @@ class HomeFragment : Fragment() {
 	private val api by inject<ApiClient>()
 	private val jellyCinema by inject<JellyCinemaRepository>()
 	private val heroState by inject<JellyCinemaHeroState>()
+	private val backgroundService by inject<org.jellyfin.androidtv.data.service.BackgroundService>()
 	private val userRepository by inject<org.jellyfin.androidtv.auth.repository.UserRepository>()
 	private val sessionRepository by inject<SessionRepository>()
 	private val serverRepository by inject<ServerRepository>()
@@ -174,6 +175,8 @@ class HomeFragment : Fragment() {
 	override fun onResume() {
 		super.onResume()
 		heroState.homeVisible = true
+		// no leftover picture (e.g. the sign-in screen's) behind Home
+		backgroundService.clearBackgrounds()
 		heroState.onInput()
 	}
 
