@@ -199,7 +199,7 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 		super.onViewCreated(view, savedInstanceState)
 		// Jelly Cinema: keep the highlighted row (with its title) near the top of the rows area
-		setAlignment((12 * resources.displayMetrics.density).toInt())
+		setAlignment((56 * resources.displayMetrics.density).toInt())
 	}
 
 	override fun onKey(v: View?, keyCode: Int, event: KeyEvent?): Boolean {
