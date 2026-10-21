@@ -15,11 +15,18 @@ fun DreamHost() {
 	val userPreferences = koinInject<UserPreferences>()
 	val content by viewModel.content.collectAsState()
 
-	DreamView(
-		content = content,
-		showClock = when (userPreferences[UserPreferences.clockBehavior]) {
-			ClockBehavior.ALWAYS, ClockBehavior.IN_MENUS -> true
-			else -> false
-		}
-	)
+	val regular = @Composable {
+		DreamView(
+			content = content,
+			showClock = when (userPreferences[UserPreferences.clockBehavior]) {
+				ClockBehavior.ALWAYS, ClockBehavior.IN_MENUS -> true
+				else -> false
+			}
+		)
+	}
+
+	// Jelly Cinema: trailers, title graphics and descriptions instead of a poster slideshow
+	// (music playing keeps the regular "now playing" screen)
+	if (content is org.jellyfin.androidtv.integration.dream.model.DreamContent.NowPlaying) regular()
+	else org.jellyfin.androidtv.jellycinema.JellyCinemaScreensaver(onEmpty = regular)
 }

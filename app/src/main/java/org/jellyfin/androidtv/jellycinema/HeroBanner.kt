@@ -379,6 +379,7 @@ fun HeroInfo(
 	playFocusRequester: FocusRequester,
 	modifier: Modifier = Modifier,
 	compact: Boolean = false,
+	showButtons: Boolean = true,
 	onBannerFocused: () -> Unit = {},
 ) {
 	val api = koinInject<ApiClient>()
@@ -448,6 +449,7 @@ fun HeroInfo(
 			}
 		}
 
+		if (showButtons) {
 		Spacer(Modifier.height(if (compact) 0.dp else 16.dp))
 		val resume = (item.userData?.playbackPositionTicks ?: 0L) > 0L
 		Row(
@@ -490,6 +492,7 @@ fun HeroInfo(
 						.background(if (i == index) Color.White else Color.White.copy(alpha = 0.35f)))
 				}
 			}
+		}
 		}
 	}
 }
