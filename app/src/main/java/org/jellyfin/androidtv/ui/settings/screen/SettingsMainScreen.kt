@@ -10,6 +10,9 @@ import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import org.jellyfin.androidtv.BuildConfig
 import org.jellyfin.androidtv.jellycinema.UpdateChecker
+import org.jellyfin.androidtv.jellycinema.SeasonalPreference
+import org.jellyfin.androidtv.jellycinema.JellyCinemaDiagnostics
+import androidx.compose.runtime.collectAsState
 import org.jellyfin.sdk.api.client.ApiClient
 import org.koin.compose.koinInject
 import androidx.compose.ui.Modifier
@@ -83,6 +86,33 @@ fun SettingsMainScreen() {
 				modifier = Modifier.focusKey(Routes.TELEMETRY),
 			)
 
+		}
+
+		item {
+			// Jelly Cinema: seasonal effects (automatic by date, off, or preview any season)
+			val context = LocalContext.current
+			var choice by remember { mutableStateOf(SeasonalPreference.get(context)) }
+			ListButton(
+				leadingContent = { Icon(painterResource(R.drawable.ic_photos), contentDescription = null) },
+				headingContent = { Text("Seasonal effects") },
+				captionContent = { Text(SeasonalPreference.label(choice) + "  \u2022  press to change") },
+				onClick = {
+					val list = SeasonalPreference.choices
+					choice = list[(list.indexOf(choice) + 1) % list.size]
+					SeasonalPreference.set(context, choice)
+				},
+			)
+		}
+
+		item {
+			// Jelly Cinema: what the banner trailer did last (helps when trailers don't show)
+			val status by JellyCinemaDiagnostics.trailer.collectAsState()
+			ListButton(
+				leadingContent = { Icon(painterResource(R.drawable.ic_info), contentDescription = null) },
+				headingContent = { Text("Banner trailers") },
+				captionContent = { Text(status) },
+				onClick = {},
+			)
 		}
 
 		item {

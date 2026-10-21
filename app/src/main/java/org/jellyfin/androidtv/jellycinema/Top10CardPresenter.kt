@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
@@ -56,8 +57,8 @@ class Top10CardPresenter(private val ranks: Map<UUID, Int>) : Presenter() {
 	companion object {
 		val POSTER_HEIGHT = 110.dp
 		val POSTER_WIDTH = 73.dp     // 2:3
-		val NUMBER_WIDTH = 66.dp
-		val OVERLAP = 8.dp           // the poster just touches the number's right edge
+		val NUMBER_WIDTH = 78.dp
+		val OVERLAP = 12.dp          // the poster just touches the number's right edge
 	}
 
 	override fun onCreateViewHolder(parent: ViewGroup): ViewHolder {
@@ -102,6 +103,8 @@ class Top10CardPresenter(private val ranks: Map<UUID, Int>) : Presenter() {
 	}
 }
 
+private val RankFont = androidx.compose.ui.text.font.FontFamily(androidx.compose.ui.text.font.Font(org.jellyfin.androidtv.R.font.jc_rank))
+
 @Composable
 private fun Top10Card(item: BaseRowItem?, rank: Int, focused: Boolean) {
 	val api = koinInject<ApiClient>()
@@ -113,11 +116,13 @@ private fun Top10Card(item: BaseRowItem?, rank: Int, focused: Boolean) {
 			.width(Top10CardPresenter.NUMBER_WIDTH + Top10CardPresenter.POSTER_WIDTH - overlap)
 			.height(Top10CardPresenter.POSTER_HEIGHT),
 	) {
-		// rank number: dark fill, white outline, standing on the poster's bottom line, fully visible left of the poster
+		// rank number, Netflix style: heavy numerals, near-black fill with a light outline,
+		// standing on the poster's bottom line with the poster tucked slightly over its right edge
 		if (rank > 0) {
-			val size = if (rank >= 10) 76.sp else 104.sp
+			val size = if (rank >= 10) 96.sp else 118.sp
 			val style = TextStyle(
-				fontSize = size, fontWeight = FontWeight.Black, letterSpacing = (-4).sp, lineHeight = size,
+				fontFamily = RankFont, fontSize = size, lineHeight = size,
+				letterSpacing = if (rank >= 10) (-10).sp else 0.sp,
 				platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
 				lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
 					alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Bottom,
@@ -128,13 +133,17 @@ private fun Top10Card(item: BaseRowItem?, rank: Int, focused: Boolean) {
 				modifier = Modifier
 					.align(Alignment.BottomStart)
 					.width(Top10CardPresenter.NUMBER_WIDTH)
-					.offset(y = 2.dp),
+					.graphicsLayer {
+						// a little narrower, like Netflix's numerals; "10" squeezed more so it fits
+						scaleX = if (rank >= 10) 0.62f else 0.84f
+						transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 1f)
+					},
 				contentAlignment = Alignment.BottomEnd,
 			) {
 				Text(text = rank.toString(), maxLines = 1, softWrap = false,
-					style = style.copy(color = Color(0xFF0A0C12)))
+					style = style.copy(color = Color(0xFFD9D9D9), drawStyle = Stroke(width = 9f, join = androidx.compose.ui.graphics.StrokeJoin.Round)))
 				Text(text = rank.toString(), maxLines = 1, softWrap = false,
-					style = style.copy(color = Color.White.copy(alpha = 0.92f), drawStyle = Stroke(width = 4f)))
+					style = style.copy(color = Color(0xFF141414)))
 			}
 		}
 		Box(

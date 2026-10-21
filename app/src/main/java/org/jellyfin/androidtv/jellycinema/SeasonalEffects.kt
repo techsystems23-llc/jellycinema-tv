@@ -235,7 +235,9 @@ private fun DrawScope.drawP(p: P) {
 
 /** Full-screen falling effect for today's theme (draws nothing on "plain" days). Never takes focus or input. */
 @Composable
-fun SeasonalEffects(modifier: Modifier = Modifier, theme: String = remember { SeasonalTheme.current() }) {
+fun SeasonalEffects(modifier: Modifier = Modifier) {
+	val context = androidx.compose.ui.platform.LocalContext.current
+	val theme = remember { SeasonalPreference.theme(context) }
 	val parts = remember(theme) { SeasonalTheme.parts(theme) }
 	if (parts.isEmpty()) return
 	val particles = remember(theme) { ArrayList<P>() }

@@ -160,8 +160,12 @@ fun HeroBackdrop(state: JellyCinemaHeroState, modifier: Modifier = Modifier) {
 	val preview by state.preview.collectAsState()
 	val theater by state.theater.collectAsState()
 	val current = preview ?: slides.getOrNull(index)
+	val trailerOn by state.trailerPlaying.collectAsState()
+	val pictureAlpha by animateFloatAsState(if (trailerOn) 0f else 1f, tween(1200), label = "picture-alpha")
 
-	Box(modifier.fillMaxSize().background(JellyCinemaTheme.background)) {
+	// No background colour and no layers under the trailer: many TVs show hardware video *behind* the
+	// app window through a see-through hole, which anything opaque underneath would cover up.
+	Box(modifier.fillMaxSize()) {
 		AnimatedContent(
 			targetState = current,
 			transitionSpec = { fadeIn(tween(900)) togetherWith fadeOut(tween(900)) },
@@ -177,7 +181,7 @@ fun HeroBackdrop(state: JellyCinemaHeroState, modifier: Modifier = Modifier) {
 					model = api.backdropUrl(item),
 					contentDescription = null,
 					contentScale = ContentScale.Crop,
-					modifier = Modifier.fillMaxSize().scale(zoom),
+					modifier = Modifier.fillMaxSize().scale(zoom).alpha(pictureAlpha),
 				)
 			}
 		}
@@ -243,7 +247,7 @@ private fun BoxScope.TrailerView(videoIds: List<String>, baseUrl: String?, onPla
 		}
 	}
 	AndroidView(
-		modifier = Modifier.fillMaxSize().scale(1.2f).graphicsLayer { this.alpha = alpha },
+		modifier = Modifier.fillMaxSize(),
 		factory = { context ->
 			WebView(context).apply {
 				setBackgroundColor(AColor.TRANSPARENT)
@@ -263,14 +267,14 @@ private fun BoxScope.TrailerView(videoIds: List<String>, baseUrl: String?, onPla
 				var which = 0
 				addJavascriptInterface(object {
 					@JavascriptInterface fun state(s: Int) = main.post {
-						android.util.Log.i("JellyCinemaTrailer", "youtube state $s for ${videoIds.getOrNull(which)}")
+						JellyCinemaDiagnostics.trailer("youtube state $s for ${videoIds.getOrNull(which)}")
 						when (s) {
 							1 -> { playing = true; onPlaying(true) }
 							0 -> { playing = false; onPlaying(false); onFinished() }
 						}
 					}
 					@JavascriptInterface fun error(code: Int) = main.post {
-						android.util.Log.w("JellyCinemaTrailer", "youtube error $code for ${videoIds.getOrNull(which)}")
+						JellyCinemaDiagnostics.trailer("youtube error $code for ${videoIds.getOrNull(which)}")
 						// embedding refused or removed: try the title's next trailer, else just keep the picture
 						Timber.i("Jelly Cinema trailer %s refused (%d)", videoIds.getOrNull(which), code)
 						which++
@@ -290,7 +294,7 @@ private fun BoxScope.TrailerView(videoIds: List<String>, baseUrl: String?, onPla
 
 private fun trailerHtml(id: String, origin: String) = """
 <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
-<style>html,body{margin:0;height:100%;background:transparent;overflow:hidden}#p{position:absolute;inset:0;width:100%;height:100%}</style></head>
+<style>html,body{margin:0;height:100%;background:transparent;overflow:hidden}#p{position:absolute;inset:0;width:100%;height:100%;transform:scale(1.22);opacity:0;transition:opacity 1.2s}#p.on{opacity:1}</style></head>
 <body><div id="p"></div><script>
 var player;
 function load(v){ try{ player.loadVideoById(v); player.mute(); }catch(e){ JC.error(-1); } }
@@ -298,7 +302,7 @@ function onYouTubeIframeAPIReady(){
   player = new YT.Player('p',{width:'100%',height:'100%',videoId:'$id',host:'https://www.youtube-nocookie.com',
     playerVars:{origin:'$origin',autoplay:1,mute:1,controls:0,disablekb:1,fs:0,iv_load_policy:3,modestbranding:1,playsinline:1,rel:0,cc_load_policy:0},
     events:{onReady:function(e){e.target.mute();e.target.playVideo();},
-            onStateChange:function(e){JC.state(e.data);},
+            onStateChange:function(e){ if(e.data===1){document.getElementById('p').className='on';} JC.state(e.data);},
             onError:function(e){JC.error(e.data);}}});
 }
 </script><script src="https://www.youtube.com/iframe_api"></script></body></html>
@@ -316,7 +320,7 @@ private suspend fun resolveTrailer(api: ApiClient, item: BaseItemDto): TrailerSo
 		runCatching { api.userLibraryApi.getItem(itemId = item.seriesId!!).content }.getOrNull() ?: item else item
 	val local = if ((target.localTrailerCount ?: 0) > 0 || target.localTrailerCount == null)
 		runCatching { api.userLibraryApi.getLocalTrailers(itemId = target.id).content.firstOrNull() }.getOrNull() else null
-	android.util.Log.i("JellyCinemaTrailer", "${target.name}: local=${local?.id} youtube=${youTubeIds(target)} remote=${target.remoteTrailers?.size}")
+	JellyCinemaDiagnostics.trailer("${target.name}: local=${local?.id} youtube=${youTubeIds(target)} remote=${target.remoteTrailers?.size}")
 	if (local != null) return@withContext TrailerSource.Local(api.videosApi.getVideoStreamUrl(itemId = local.id, static = true))
 	val ids = youTubeIds(target)
 	if (ids.isNotEmpty()) TrailerSource.YouTube(ids) else TrailerSource.None
@@ -346,7 +350,7 @@ private fun BoxScope.LocalTrailerView(url: String, maxSeconds: Int, onPlaying: (
 				if (state == Player.STATE_ENDED) { playing = false; onPlaying(false); onFinished() }
 			}
 			override fun onPlayerError(error: PlaybackException) {
-				Timber.i(error, "Jelly Cinema local trailer failed")
+				JellyCinemaDiagnostics.trailer("Trailer file couldn't play: ${error.errorCodeName}")
 				playing = false; onPlaying(false); onFailed()
 			}
 		}
@@ -359,7 +363,7 @@ private fun BoxScope.LocalTrailerView(url: String, maxSeconds: Int, onPlaying: (
 	AndroidView(
 		modifier = Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha },
 		factory = { ctx ->
-			PlayerView(ctx).apply {
+			(android.view.LayoutInflater.from(ctx).inflate(org.jellyfin.androidtv.R.layout.jc_trailer_player, null) as PlayerView).apply {
 				useController = false
 				isFocusable = false
 				resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
