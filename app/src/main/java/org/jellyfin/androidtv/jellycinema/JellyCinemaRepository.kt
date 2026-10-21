@@ -18,6 +18,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.displayPreferencesApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
+import org.jellyfin.sdk.api.client.extensions.libraryApi
+import org.jellyfin.sdk.api.client.extensions.genresApi
 import org.jellyfin.sdk.api.client.extensions.userApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.api.client.extensions.userViewsApi
@@ -396,5 +398,92 @@ class JellyCinemaRepository(private val api: ApiClient) {
 			val ok = verify(list)
 			if (ok.size < 3) null else row to ok
 		}
+	}
+
+	// ---------------------------------------------------------------------------------------------
+	// "Because You Watched" and genre rows, made by the app from this person's own watch history
+	// (the server's Home Screen Sections plugin is not needed).
+
+	/** Up to [count] "Because You Watched <title>" rows from the most recently finished movies and shows. */
+	suspend fun becauseYouWatched(count: Int = 2): List<Pair<String, List<BaseItemDto>>> = withContext(Dispatchers.IO) {
+		val recent = runCatching {
+			api.itemsApi.getItems(
+				includeItemTypes = setOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE), recursive = true,
+				filters = listOf(ItemFilter.IS_PLAYED), sortBy = listOf(ItemSortBy.DATE_PLAYED),
+				sortOrder = listOf(SortOrder.DESCENDING), limit = 30, enableUserData = true,
+			).content.items
+		}.getOrDefault(emptyList())
+		// one entry per movie or show (episodes count as their show)
+		val seeds = recent.mapNotNull { i ->
+			if (i.type == BaseItemKind.EPISODE) i.seriesId?.let { it to (i.seriesName ?: "") } else i.id to (i.name ?: "")
+		}.distinctBy { it.first }.take(count + 2)
+		val rows = ArrayList<Pair<String, List<BaseItemDto>>>()
+		for ((id, name) in seeds) {
+			if (rows.size >= count) break
+			val similar = runCatching {
+				api.libraryApi.getSimilarItems(
+					org.jellyfin.sdk.model.api.request.GetSimilarItemsRequest(itemId = id, fields = cardFields, limit = 20)
+				).content.items
+			}.getOrDefault(emptyList()).filter { it.userData?.played != true }
+			if (similar.size >= 4 && name.isNotBlank()) rows.add("Because You Watched $name" to similar)
+		}
+		rows
+	}
+
+	/** Movie rows for the genres this person watches most, e.g. "Science Fiction Movies". */
+	suspend fun genreRows(count: Int = 4): List<Pair<String, List<BaseItemDto>>> = withContext(Dispatchers.IO) {
+		val played = runCatching {
+			api.itemsApi.getItems(
+				includeItemTypes = setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.EPISODE), recursive = true,
+				filters = listOf(ItemFilter.IS_PLAYED), sortBy = listOf(ItemSortBy.DATE_PLAYED), sortOrder = listOf(SortOrder.DESCENDING),
+				fields = setOf(ItemFields.GENRES), limit = 300,
+			).content.items
+		}.getOrDefault(emptyList())
+		val counts = HashMap<String, Int>()
+		played.forEach { i -> i.genres.orEmpty().forEach { g -> counts[g] = (counts[g] ?: 0) + 1 } }
+		var genres = counts.entries.sortedByDescending { it.value }.map { it.key }
+		if (genres.size < count) {
+			// new viewer: use the library's biggest movie genres
+			val all = runCatching {
+				api.genresApi.getGenres(includeItemTypes = setOf(BaseItemKind.MOVIE), sortBy = listOf(ItemSortBy.SORT_NAME), limit = 40).content.items
+			}.getOrDefault(emptyList()).mapNotNull { it.name }
+			genres = (genres + all.shuffled()).distinct()
+		}
+		val rows = ArrayList<Pair<String, List<BaseItemDto>>>()
+		for (g in genres) {
+			if (rows.size >= count) break
+			val list = runCatching {
+				api.itemsApi.getItems(
+					includeItemTypes = setOf(BaseItemKind.MOVIE), recursive = true, genres = listOf(g),
+					sortBy = listOf(ItemSortBy.RANDOM), limit = 24, imageTypes = listOf(ImageType.PRIMARY),
+					fields = cardFields, enableUserData = true,
+				).content.items
+			}.getOrDefault(emptyList())
+			// unwatched first
+			val sorted = list.sortedBy { if (it.userData?.played == true) 1 else 0 }
+			if (sorted.size >= 6) rows.add("$g Movies" to sorted)
+		}
+		rows
+	}
+
+	/** The person's collections (box sets), only ones they may open. */
+	suspend fun collections(): List<BaseItemDto> = withContext(Dispatchers.IO) {
+		runCatching {
+			api.itemsApi.getItems(
+				includeItemTypes = setOf(BaseItemKind.BOX_SET), recursive = true, sortBy = listOf(ItemSortBy.RANDOM),
+				limit = 24, imageTypes = listOf(ImageType.PRIMARY), fields = cardFields, enableUserData = true,
+			).content.items
+		}.getOrDefault(emptyList())
+	}
+
+	/** Movies and shows this person finished, most recent first. */
+	suspend fun watchAgain(): List<BaseItemDto> = withContext(Dispatchers.IO) {
+		runCatching {
+			api.itemsApi.getItems(
+				includeItemTypes = setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES), recursive = true,
+				filters = listOf(ItemFilter.IS_PLAYED), sortBy = listOf(ItemSortBy.DATE_PLAYED), sortOrder = listOf(SortOrder.DESCENDING),
+				limit = 24, imageTypes = listOf(ImageType.PRIMARY), fields = cardFields, enableUserData = true,
+			).content.items
+		}.getOrDefault(emptyList())
 	}
 }

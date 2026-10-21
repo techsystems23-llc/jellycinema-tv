@@ -34,12 +34,24 @@ class JellyCinemaStaticRow(
 }
 
 /** The Jelly Cinema rows for this person: seasonal rows go first, the rest after Continue Watching / Next Up. */
-class JellyCinemaHomeRows(val top10: List<HomeFragmentRow>, val seasonal: List<HomeFragmentRow>, val picks: List<HomeFragmentRow>)
+class JellyCinemaHomeRows(
+	val top10: List<HomeFragmentRow>,
+	val seasonal: List<HomeFragmentRow>,
+	val picks: List<HomeFragmentRow>,
+	val because: List<HomeFragmentRow> = emptyList(),
+	val genres: List<HomeFragmentRow> = emptyList(),
+	val collections: List<HomeFragmentRow> = emptyList(),
+	val watchAgain: List<HomeFragmentRow> = emptyList(),
+)
 
 suspend fun JellyCinemaRepository.loadHomeRows(user: UserDto): JellyCinemaHomeRows = coroutineScope {
 	val cfg = config
 	val seasonalJob = async { withTimeoutOrNull(15_000) { seasonal() }.orEmpty() }
 	val picksJob = async { withTimeoutOrNull(15_000) { picks() }.orEmpty() }
+	val becauseJob = async { withTimeoutOrNull(15_000) { becauseYouWatched() }.orEmpty() }
+	val genreJob = async { withTimeoutOrNull(15_000) { genreRows(5) }.orEmpty() }
+	val collectionsJob = async { if (user.policy?.maxParentalRating != null) emptyList() else withTimeoutOrNull(15_000) { collections() }.orEmpty() }
+	val watchAgainJob = async { withTimeoutOrNull(15_000) { watchAgain() }.orEmpty() }
 	val topJob = async {
 		if (!cfg.top10Enabled) return@async emptyList<BaseItemDto>() to emptyList()
 		withTimeoutOrNull(15_000) { top10(user.id) } ?: (emptyList<BaseItemDto>() to emptyList())
@@ -53,7 +65,12 @@ suspend fun JellyCinemaRepository.loadHomeRows(user: UserDto): JellyCinemaHomeRo
 	}
 	val picks = picksJob.await()
 	val picksRows = if (picks.isEmpty()) emptyList() else listOf(JellyCinemaStaticRow(cfg.picksTitle ?: "${cfg.brandName ?: "Jelly Cinema"} Picks", picks))
-	JellyCinemaHomeRows(top10, seasonalRows, picksRows)
+	val because = becauseJob.await().map { (t, items) -> JellyCinemaStaticRow(t, items) }
+	val genre = genreJob.await().map { (t, items) -> JellyCinemaStaticRow(t, items) }
+	// Collections: hidden for accounts with a rating limit (kids saw grown-up collection names on the web)
+	val collections = collectionsJob.await().takeIf { it.size >= 3 }?.let { listOf(JellyCinemaStaticRow("Collections", it)) }.orEmpty()
+	val watchAgain = watchAgainJob.await().takeIf { it.size >= 3 }?.let { listOf(JellyCinemaStaticRow("Watch Again", it)) }.orEmpty()
+	JellyCinemaHomeRows(top10, seasonalRows, picksRows, because, genre, collections, watchAgain)
 }
 
 private fun top10Row(title: String, items: List<BaseItemDto>): HomeFragmentRow {

@@ -79,6 +79,11 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil3.compose.AsyncImage
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.options.IFramePlayerOptions
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import org.jellyfin.sdk.api.client.extensions.videosApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -163,29 +168,8 @@ fun HeroBackdrop(state: JellyCinemaHeroState, modifier: Modifier = Modifier) {
 	val trailerOn by state.trailerVisible.collectAsState()
 	val pictureAlpha by animateFloatAsState(if (trailerOn) 0f else 1f, tween(1200), label = "picture-alpha")
 
-	// No background colour and no layers under the trailer: many TVs show hardware video *behind* the
-	// app window through a see-through hole, which anything opaque underneath would cover up.
+	// The trailer sits underneath the picture; the picture fades away once the trailer is playing.
 	Box(modifier.fillMaxSize().background(JellyCinemaTheme.background)) {
-		AnimatedContent(
-			targetState = current,
-			transitionSpec = { fadeIn(tween(900)) togetherWith fadeOut(tween(900)) },
-			contentKey = { it?.id },
-			label = "hero-backdrop",
-		) { item ->
-			if (item != null) {
-				// slow "Ken Burns" zoom while a title is shown
-				var zoomed by remember(item.id) { mutableStateOf(false) }
-				LaunchedEffect(item.id) { zoomed = true }
-				val zoom by animateFloatAsState(if (zoomed) 1.1f else 1.02f, tween(24_000, easing = LinearEasing), label = "ken-burns")
-				AsyncImage(
-					model = api.backdropUrl(item),
-					contentDescription = null,
-					contentScale = ContentScale.Crop,
-					modifier = Modifier.fillMaxSize().scale(zoom).alpha(pictureAlpha),
-				)
-			}
-		}
-
 		// Trailer (muted): the title's own trailer file if the library has one, else its YouTube trailer
 		val cfg = repo.config
 		val trailerItem = current
@@ -206,11 +190,32 @@ fun HeroBackdrop(state: JellyCinemaHeroState, modifier: Modifier = Modifier) {
 				is TrailerSource.Local -> LocalTrailerView(src.url, cfg.trailerMaxSeconds, onPlaying, onFinished,
 					onVisible = { state.trailerVisible.value = it },
 					onFailed = { source = src.fallback.takeIf { it.isNotEmpty() }?.let { TrailerSource.YouTube(it) } ?: TrailerSource.None })
-				is TrailerSource.YouTube -> TrailerView(src.ids, api.baseUrl, onPlaying, onFinished)
+				is TrailerSource.YouTube -> TrailerView(src.ids, api.baseUrl, onPlaying, { state.trailerVisible.value = it }, onFinished)
 				else -> Unit
 			}
 		} else {
 			LaunchedEffect(Unit) { state.trailerPlaying.value = false }
+		}
+
+
+		AnimatedContent(
+			targetState = current,
+			transitionSpec = { fadeIn(tween(900)) togetherWith fadeOut(tween(900)) },
+			contentKey = { it?.id },
+			label = "hero-backdrop",
+		) { item ->
+			if (item != null) {
+				// slow "Ken Burns" zoom while a title is shown
+				var zoomed by remember(item.id) { mutableStateOf(false) }
+				LaunchedEffect(item.id) { zoomed = true }
+				val zoom by animateFloatAsState(if (zoomed) 1.1f else 1.02f, tween(24_000, easing = LinearEasing), label = "ken-burns")
+				AsyncImage(
+					model = api.backdropUrl(item),
+					contentDescription = null,
+					contentScale = ContentScale.Crop,
+					modifier = Modifier.fillMaxSize().scale(zoom).alpha(pictureAlpha),
+				)
+			}
 		}
 
 		// left shade for the text, bottom fade into the page
@@ -234,81 +239,64 @@ fun HeroBackdrop(state: JellyCinemaHeroState, modifier: Modifier = Modifier) {
 	}
 }
 
-/** A YouTube trailer filling the banner. Reports when it is playing and when it ends or can't play. */
-@SuppressLint("SetJavaScriptEnabled")
+/**
+ * A YouTube trailer through YouTube's own embedded player (the official IFrame player, via the
+ * Apache-2.0 android-youtube-player library), muted, behind the banner picture. The picture fades
+ * away once the trailer is really playing.
+ */
 @Composable
-private fun BoxScope.TrailerView(videoIds: List<String>, baseUrl: String?, onPlaying: (Boolean) -> Unit, onFinished: () -> Unit) {
-	var playing by remember { mutableStateOf(false) }
-	val alpha by animateFloatAsState(if (playing) 1f else 0f, tween(1200), label = "trailer-alpha")
+private fun BoxScope.TrailerView(
+	videoIds: List<String>,
+	baseUrl: String?,
+	onPlaying: (Boolean) -> Unit,
+	onVisible: (Boolean) -> Unit,
+	onFinished: () -> Unit,
+) {
 	val repo = koinInject<JellyCinemaRepository>()
 	val maxMs = repo.config.trailerMaxSeconds * 1000L
+	var playing by remember { mutableStateOf(false) }
 	LaunchedEffect(playing) {
-		if (playing) {
-			delay(maxMs)
-			onFinished()
-		}
+		if (playing) { delay(maxMs); onFinished() }
 	}
 	AndroidView(
 		modifier = Modifier.fillMaxSize(),
 		factory = { context ->
-			WebView(context).apply {
-				setBackgroundColor(AColor.TRANSPARENT)
+			YouTubePlayerView(context).apply {
+				enableAutomaticInitialization = false
 				isFocusable = false
-				isFocusableInTouchMode = false
-				settings.javaScriptEnabled = true
-				settings.mediaPlaybackRequiresUserGesture = false
-				settings.domStorageEnabled = true
-				webChromeClient = object : WebChromeClient() {
-					override fun onConsoleMessage(m: android.webkit.ConsoleMessage): Boolean {
-						android.util.Log.i("JellyCinemaTrailer", "console: ${m.message()} @${m.sourceId()}:${m.lineNumber()}")
-						return true
-					}
-				}
-				webViewClient = WebViewClient()
-				val main = Handler(Looper.getMainLooper())
+				descendantFocusability = android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS
+				val options = IFramePlayerOptions.Builder(context)
+					.controls(0).rel(0).ivLoadPolicy(3).ccLoadPolicy(0).fullscreen(0).autoplay(1).mute(1)
+					.apply { baseUrl?.let { origin(it.trimEnd('/')) } }
+					.build()
 				var which = 0
-				addJavascriptInterface(object {
-					@JavascriptInterface fun state(s: Int) = main.post {
-						JellyCinemaDiagnostics.trailer("youtube state $s for ${videoIds.getOrNull(which)}")
-						when (s) {
-							1 -> { playing = true; onPlaying(true) }
-							0 -> { playing = false; onPlaying(false); onFinished() }
+				initialize(object : AbstractYouTubePlayerListener() {
+					override fun onReady(youTubePlayer: YouTubePlayer) {
+						youTubePlayer.mute()
+						youTubePlayer.loadVideo(videoIds[which], 0f)
+					}
+					override fun onStateChange(youTubePlayer: YouTubePlayer, state: PlayerConstants.PlayerState) {
+						when (state) {
+							PlayerConstants.PlayerState.PLAYING -> {
+								if (!playing) JellyCinemaDiagnostics.trailer("YouTube trailer playing (${videoIds[which]})")
+								playing = true; onPlaying(true); onVisible(true)
+							}
+							PlayerConstants.PlayerState.ENDED -> { playing = false; onVisible(false); onPlaying(false); onFinished() }
+							else -> Unit
 						}
 					}
-					@JavascriptInterface fun error(code: Int) = main.post {
-						JellyCinemaDiagnostics.trailer("youtube error $code for ${videoIds.getOrNull(which)}")
-						// embedding refused or removed: try the title's next trailer, else just keep the picture
-						Timber.i("Jelly Cinema trailer %s refused (%d)", videoIds.getOrNull(which), code)
+					override fun onError(youTubePlayer: YouTubePlayer, error: PlayerConstants.PlayerError) {
+						JellyCinemaDiagnostics.trailer("YouTube trailer ${videoIds.getOrNull(which)} refused: $error")
 						which++
-						if (which < videoIds.size) evaluateJavascript("load('${videoIds[which]}')", null)
-						else { playing = false; onPlaying(false) }
+						if (which < videoIds.size && which < 4) youTubePlayer.loadVideo(videoIds[which], 0f)
+						else { playing = false; onVisible(false); onPlaying(false) }
 					}
-				}, "JC")
-				// YouTube refuses embeds without a real page origin (error 152/153): use the Jellyfin server's address,
-				// the same origin the Jelly Cinema web banner plays from
-				val origin = (baseUrl ?: "https://app.jellycinema.tv").trimEnd('/')
-				loadDataWithBaseURL("$origin/web/", trailerHtml(videoIds.first(), origin), "text/html", "utf-8", null)
+				}, false, options)
 			}
 		},
-		onRelease = { it.destroy(); onPlaying(false) },
+		onRelease = { it.release(); onVisible(false); onPlaying(false) },
 	)
 }
-
-private fun trailerHtml(id: String, origin: String) = """
-<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
-<style>html,body{margin:0;height:100%;background:transparent;overflow:hidden}#p{position:absolute;inset:0;width:100%;height:100%;transform:scale(1.22);opacity:0;transition:opacity 1.2s}#p.on{opacity:1}</style></head>
-<body><div id="p"></div><script>
-var player;
-function load(v){ try{ player.loadVideoById(v); player.mute(); }catch(e){ JC.error(-1); } }
-function onYouTubeIframeAPIReady(){
-  player = new YT.Player('p',{width:'100%',height:'100%',videoId:'$id',host:'https://www.youtube-nocookie.com',
-    playerVars:{origin:'$origin',autoplay:1,mute:1,controls:0,disablekb:1,fs:0,iv_load_policy:3,modestbranding:1,playsinline:1,rel:0,cc_load_policy:0},
-    events:{onReady:function(e){e.target.mute();e.target.playVideo();},
-            onStateChange:function(e){ if(e.data===1){document.getElementById('p').className='on';} JC.state(e.data);},
-            onError:function(e){JC.error(e.data);}}});
-}
-</script><script src="https://www.youtube.com/iframe_api"></script></body></html>
-""".trimIndent()
 
 private sealed interface TrailerSource {
 	/** A video the app's own player shows; [fallback] = YouTube ids for the web player if it can't. */
@@ -324,14 +312,8 @@ private suspend fun resolveTrailer(api: ApiClient, item: BaseItemDto): TrailerSo
 	val local = if ((target.localTrailerCount ?: 0) > 0 || target.localTrailerCount == null)
 		runCatching { api.userLibraryApi.getLocalTrailers(itemId = target.id).content.firstOrNull() }.getOrNull() else null
 	JellyCinemaDiagnostics.trailer("${target.name}: local=${local?.id} youtube=${youTubeIds(target)} remote=${target.remoteTrailers?.size}")
-	if (local != null) return@withContext TrailerSource.Local(api.videosApi.getVideoStreamUrl(itemId = local.id, static = true))
+	if (local != null) return@withContext TrailerSource.Local(api.videosApi.getVideoStreamUrl(itemId = local.id, static = true), youTubeIds(target))
 	val ids = youTubeIds(target)
-	// YouTube trailers: get the plain video so the app's own player shows it in the banner
-	for (id in ids.take(3)) {
-		val url = YouTubeStreams.videoUrl(id) ?: continue
-		JellyCinemaDiagnostics.trailer("${target.name}: playing YouTube trailer $id")
-		return@withContext TrailerSource.Local(url, ids)
-	}
 	if (ids.isNotEmpty()) TrailerSource.YouTube(ids) else TrailerSource.None
 }
 

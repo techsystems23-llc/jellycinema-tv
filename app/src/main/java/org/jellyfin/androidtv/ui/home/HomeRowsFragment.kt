@@ -120,23 +120,20 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 			// Actually add the sections
 			// Jelly Cinema order: Top 10 first, then the seasonal rows (Halloween...), Picks, then the regular sections
 			jcRows?.let { rows.addAll(it.top10); rows.addAll(it.seasonal); rows.addAll(it.picks) }
-			for (section in homesections) {
-			when (section) {
-				HomeSectionType.LATEST_MEDIA -> rows.add(helper.loadRecentlyAdded(userViewsRepository.views.first()))
-				HomeSectionType.LIBRARY_TILES_SMALL -> rows.add(HomeFragmentViewsRow(small = false))
-				HomeSectionType.LIBRARY_BUTTONS -> rows.add(HomeFragmentViewsRow(small = true))
-				HomeSectionType.RESUME -> rows.add(helper.loadResumeVideo())
-				HomeSectionType.RESUME_AUDIO -> rows.add(helper.loadResumeAudio())
-				HomeSectionType.RESUME_BOOK -> Unit // Books are not (yet) supported
-				HomeSectionType.ACTIVE_RECORDINGS -> rows.add(helper.loadLatestLiveTvRecordings())
-				HomeSectionType.NEXT_UP -> rows.add(helper.loadNextUp())
-				HomeSectionType.LIVE_TV -> if (currentUser.policy?.enableLiveTvAccess == true) {
-					rows.add(HomeFragmentLiveTVRow(requireActivity(), userRepository))
-					rows.add(helper.loadOnNow())
-				}
-
-				HomeSectionType.NONE -> Unit
-			}
+			// Then the same rows, in the same order, as the Jelly Cinema home page on the web
+			// (made by the app itself, so no Home Screen Sections plugin is needed):
+			// My Media, Continue Watching, Next Up, Recently Added Movies/Shows, Because You Watched,
+			// genre rows, Collections, Watch Again.
+			val views = userViewsRepository.views.first()
+			rows.add(HomeFragmentViewsRow(small = false))
+			rows.add(helper.loadResumeVideo())
+			rows.add(helper.loadNextUp())
+			rows.add(helper.loadRecentlyAdded(views))
+			jcRows?.let { rows.addAll(it.because); rows.addAll(it.genres); rows.addAll(it.collections); rows.addAll(it.watchAgain) }
+			if (HomeSectionType.RESUME_AUDIO in homesections) rows.add(helper.loadResumeAudio())
+			if (HomeSectionType.LIVE_TV in homesections && currentUser.policy?.enableLiveTvAccess == true) {
+				rows.add(HomeFragmentLiveTVRow(requireActivity(), userRepository))
+				rows.add(helper.loadOnNow())
 			}
 
 			// Add sections to layout

@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.findViewTreeCompositionContext
 import androidx.compose.ui.text.TextStyle
@@ -124,15 +125,12 @@ private fun Top10Card(item: BaseRowItem?, rank: Int, focused: Boolean) {
 				fontFamily = RankFont, fontSize = size, lineHeight = size,
 				letterSpacing = if (rank >= 10) (-10).sp else 0.sp,
 				platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
-				lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
-					alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Bottom,
-					trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both,
-				),
 			)
 			Box(
 				modifier = Modifier
 					.align(Alignment.BottomStart)
 					.width(Top10CardPresenter.NUMBER_WIDTH)
+					.offset(y = (-2).dp) // the outline's half-width, so the outline itself ends on the poster's bottom
 					.graphicsLayer {
 						// a little narrower, like Netflix's numerals; "10" squeezed more so it fits
 						scaleX = if (rank >= 10) 0.66f else 0.84f
@@ -140,9 +138,15 @@ private fun Top10Card(item: BaseRowItem?, rank: Int, focused: Boolean) {
 					},
 				contentAlignment = Alignment.BottomEnd,
 			) {
-				Text(text = rank.toString(), maxLines = 1, softWrap = false,
+				// sized to the digits' baseline, so the bottom of each number sits on the poster's bottom edge
+				val onBaseline = Modifier.layout { measurable, constraints ->
+					val p = measurable.measure(constraints.copy(minHeight = 0, maxHeight = androidx.compose.ui.unit.Constraints.Infinity))
+					val base = p[androidx.compose.ui.layout.LastBaseline].takeIf { it != androidx.compose.ui.layout.AlignmentLine.Unspecified } ?: p.height
+					layout(p.width, base) { p.place(0, 0) }
+				}
+				Text(text = rank.toString(), maxLines = 1, softWrap = false, modifier = onBaseline,
 					style = style.copy(color = Color(0xFFD9D9D9), drawStyle = Stroke(width = 9f, join = androidx.compose.ui.graphics.StrokeJoin.Round)))
-				Text(text = rank.toString(), maxLines = 1, softWrap = false,
+				Text(text = rank.toString(), maxLines = 1, softWrap = false, modifier = onBaseline,
 					style = style.copy(color = Color(0xFF141414)))
 			}
 		}

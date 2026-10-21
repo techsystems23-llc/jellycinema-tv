@@ -159,7 +159,8 @@ dependencies {
 
 	// Media players
 	implementation(libs.androidx.media3.exoplayer)
-	implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.5")
+	// YouTube trailers through YouTube's official embedded player (Apache-2.0 library)
+	implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:13.0.0")
 	implementation(libs.androidx.media3.datasource.okhttp)
 	implementation(libs.androidx.media3.exoplayer.hls)
 	implementation(libs.androidx.media3.ui)
