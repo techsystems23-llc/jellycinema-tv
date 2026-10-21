@@ -34,46 +34,71 @@ object UpdateChecker {
     private const val MIN_INTERVAL_MS = 10 * 60 * 1000L   // every start, at most every 10 minutes
     private const val TIMEOUT_MS = 10_000
 
-    suspend fun check(context: Context, serverUrl: String, force: Boolean = false) {
+    /** What a check found, for the Settings button. */
+    sealed interface Result {
+        data object Skipped : Result
+        data object NoServer : Result
+        data object UpToDate : Result
+        data class Installing(val versionName: String) : Result
+        data object NeedsPermission : Result
+        data class Failed(val reason: String) : Result
+    }
+
+    suspend fun check(context: Context, serverUrl: String?, force: Boolean = false): Result {
         val app = context.applicationContext
         val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
-        if (!force && now - prefs.getLong(KEY_LAST, 0) < MIN_INTERVAL_MS) return
+        if (serverUrl.isNullOrBlank()) return Result.NoServer
+        if (!force && now - prefs.getLong(KEY_LAST, 0) < MIN_INTERVAL_MS) return Result.Skipped
         prefs.edit().putLong(KEY_LAST, now).apply()
-        try {
+        return try {
             val base = serverUrl.trimEnd('/') + "/web/hub/"
-            val json = withContext(Dispatchers.IO) { fetchText(base + "jellycinema-tv.json") } ?: return
+            // cache-busting so the TV never reuses an old or half-finished copy
+            val bust = "?t=$now"
+            val json = withContext(Dispatchers.IO) { fetchText(base + "jellycinema-tv.json" + bust) }
+                ?: return Result.Failed("No update information on the server")
             val info = Json.parseToJsonElement(json).jsonObject
-            val versionCode = info["versionCode"]?.jsonPrimitive?.int ?: return
+            val versionCode = info["versionCode"]?.jsonPrimitive?.int ?: return Result.Failed("Update information is unreadable")
             val versionName = info["versionName"]?.jsonPrimitive?.content ?: versionCode.toString()
             val apk = info["apk"]?.jsonPrimitive?.content ?: "jellycinema-tv.zip"
             val md5 = info["md5"]?.jsonPrimitive?.content
-            if (versionCode <= BuildConfig.VERSION_CODE) return
-            if (apk.contains('/') || apk.contains("..")) return
+            if (versionCode <= BuildConfig.VERSION_CODE) return Result.UpToDate
+            if (apk.contains('/') || apk.contains("..")) return Result.Failed("Update file name is not allowed")
             Timber.i("Jelly Cinema TV update %s (%d) available", versionName, versionCode)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !app.packageManager.canRequestPackageInstalls()) {
                 // one-time: the TV has to allow this app to install its updates
-                toast(app, "Jelly Cinema $versionName is ready. Allow \"Install unknown apps\" for Jelly Cinema, then open it again.")
+                toast(app, "Jelly Cinema $versionName is ready. Turn on \"Allow from this source\" for Jelly Cinema, then press Back and try again.")
                 val i = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + app.packageName))
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 try { app.startActivity(i) } catch (e: Exception) { Timber.w(e) }
                 prefs.edit().putLong(KEY_LAST, 0).apply()
-                return
+                return Result.NeedsPermission
             }
             val file = File(app.cacheDir, "jellycinema-tv-update.apk")
-            val ok = withContext(Dispatchers.IO) { download(base + apk, file) && (md5 == null || md5.equals(md5Of(file), true)) }
-            if (!ok) { Timber.w("Update download failed or checksum mismatch"); file.delete(); return }
+            file.delete()
+            if (force) toast(app, "Downloading Jelly Cinema $versionName…")
+            val downloaded = withContext(Dispatchers.IO) { download(base + apk + bust, file) }
+            if (!downloaded) { file.delete(); return Result.Failed("Download didn't finish") }
+            val sum = withContext(Dispatchers.IO) { md5Of(file) }
+            if (md5 != null && !md5.equals(sum, true)) {
+                Timber.w("Update checksum mismatch %s != %s", sum, md5)
+                file.delete()
+                return Result.Failed("Download was damaged, try again")
+            }
             toast(app, "Updating Jelly Cinema to $versionName…")
             withContext(Dispatchers.IO) { install(app, file) }
+            Result.Installing(versionName)
         } catch (e: Exception) {
             Timber.w(e, "Update check failed")
+            Result.Failed(e.message ?: e.javaClass.simpleName)
         }
     }
 
     private fun fetchText(url: String): String? {
         val c = URL(url).openConnection() as HttpURLConnection
         c.connectTimeout = TIMEOUT_MS; c.readTimeout = TIMEOUT_MS
+        c.useCaches = false
         return try {
             if (c.responseCode != 200) null else c.inputStream.bufferedReader().use { it.readText() }
         } finally { c.disconnect() }
@@ -82,10 +107,12 @@ object UpdateChecker {
     private fun download(url: String, out: File): Boolean {
         val c = URL(url).openConnection() as HttpURLConnection
         c.connectTimeout = TIMEOUT_MS; c.readTimeout = 60_000
+        c.useCaches = false
         return try {
             if (c.responseCode != 200) return false
+            val expected = c.contentLengthLong
             c.inputStream.use { input -> out.outputStream().use { input.copyTo(it) } }
-            out.length() > 0
+            out.length() > 0 && (expected <= 0 || out.length() == expected)
         } finally { c.disconnect() }
     }
 

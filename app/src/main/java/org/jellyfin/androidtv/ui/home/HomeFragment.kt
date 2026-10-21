@@ -195,7 +195,7 @@ class HomeFragment : Fragment() {
 				val items = runCatching { jellyCinema.heroItems() }.onFailure { Timber.w(it, "Banner titles failed") }.getOrDefault(emptyList())
 				heroState.setSlides(items)
 			}
-			api.baseUrl?.let { url -> UpdateChecker.check(requireContext(), url) }
+			UpdateChecker.check(requireContext(), api.baseUrl)
 			// admins keep the shared Top 10 ranking fresh, in the background (shows next time Home opens)
 			userRepository.currentUser.value?.takeIf { it.policy?.isAdministrator == true }?.let { me ->
 				runCatching { jellyCinema.refreshRankingIfNeeded(me) }.onFailure { Timber.w(it, "Top 10 refresh failed") }
