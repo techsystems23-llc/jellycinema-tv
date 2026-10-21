@@ -362,7 +362,7 @@
     <string name="discovered_servers_empty">No servers found on local network.</string>
     <string name="connect_manually_by_address">Enter server address</string>
     <string name="login_help_title">Need help?</string>
-    <string name="login_help_description">Jellyfin requires a server to connect with. Visit our documentation at docs.jellyfin.org or scan the QR code to get started with Jellyfin.</string>
+    <string name="login_help_description">Jelly Cinema needs a Jellyfin server to connect to. Visit docs.jellyfin.org or scan the QR code to get started.</string>
     <string name="pref_watched_indicator">Show watched indicators</string>
     <string name="lbl_hide_unwatched_count">When the item is watched</string>
     <string name="lbl_hide_watched_checkmark">When there are episodes remaining</string>
@@ -375,10 +375,10 @@
     <string name="user_picker_last_user_summary">Use the last active account</string>
     <string name="lbl_switch_user">Switch account</string>
     <string name="pref_theme_muted_purple">Muted purple</string>
-    <string name="no_network_permissions">Jellyfin requires network permissions to function</string>
+    <string name="no_network_permissions">Jelly Cinema requires network permissions to work</string>
     <string name="press_to_close">Press to close</string>
     <string name="saved_servers">Saved servers</string>
-    <string name="welcome_title">Welcome to Jellyfin!</string>
+    <string name="welcome_title">Welcome to Jelly Cinema!</string>
     <string name="welcome_content">Connect to your server to get started.</string>
     <string name="no_user_warning">We couldn\'t find any accounts!\nAdd a new account by pressing the \"Add account\" button.</string>
     <string name="who_is_watching">Who\'s watching?</string>
