@@ -173,6 +173,8 @@ val appModule = module {
 
 	single { MarkdownRenderer(get()) }
 	single { ItemLauncher() }
+	single { org.jellyfin.androidtv.jellycinema.JellyCinemaRepository(get()) }
+	single { org.jellyfin.androidtv.jellycinema.JellyCinemaHeroState() }
 	single { KeyProcessor() }
 	single { ReportingHelper(get(), get()) }
 	single<PlaybackHelper> { SdkPlaybackHelper(get(), get(), get(), get()) }

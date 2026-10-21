@@ -34,6 +34,9 @@ import org.jellyfin.androidtv.data.repository.CustomMessageRepository
 import org.jellyfin.androidtv.data.repository.NotificationsRepository
 import org.jellyfin.androidtv.data.repository.UserViewsRepository
 import org.jellyfin.androidtv.data.service.BackgroundService
+import org.jellyfin.androidtv.jellycinema.JellyCinemaHeroState
+import org.jellyfin.androidtv.jellycinema.JellyCinemaRepository
+import org.jellyfin.androidtv.jellycinema.loadHomeRows
 import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.preference.UserSettingPreferences
 import org.jellyfin.androidtv.ui.GridButton
@@ -75,6 +78,8 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 	private val navigationRepository by inject<NavigationRepository>()
 	private val itemLauncher by inject<ItemLauncher>()
 	private val keyProcessor by inject<KeyProcessor>()
+	private val jellyCinema by inject<JellyCinemaRepository>()
+	private val heroState by inject<JellyCinemaHeroState>()
 
 	private val helper by lazy { HomeFragmentHelper(requireContext(), userRepository, userPreferences) }
 
@@ -97,6 +102,12 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 				userRepository.currentUser.filterNotNull().first()
 			}
 
+			// Jelly Cinema rows (seasonal, Top 10, Picks) load alongside the regular sections
+			val jcRows = runCatching {
+				jellyCinema.ensureConfig()
+				jellyCinema.loadHomeRows(currentUser)
+			}.onFailure { Timber.w(it, "Jelly Cinema rows failed") }.getOrNull()
+
 			// Start out with default sections
 			val homesections = userSettingPreferences.activeHomesections
 
@@ -107,7 +118,10 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 			if (!isActive) return@launch
 
 			// Actually add the sections
-			for (section in homesections) when (section) {
+			// Jelly Cinema order: Top 10 first, then the seasonal rows (Halloween...), Picks, then the regular sections
+			jcRows?.let { rows.addAll(it.top10); rows.addAll(it.seasonal); rows.addAll(it.picks) }
+			for (section in homesections) {
+			when (section) {
 				HomeSectionType.LATEST_MEDIA -> rows.add(helper.loadRecentlyAdded(userViewsRepository.views.first()))
 				HomeSectionType.LIBRARY_TILES_SMALL -> rows.add(HomeFragmentViewsRow(small = false))
 				HomeSectionType.LIBRARY_BUTTONS -> rows.add(HomeFragmentViewsRow(small = true))
@@ -122,6 +136,7 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 				}
 
 				HomeSectionType.NONE -> Unit
+			}
 			}
 
 			// Add sections to layout
@@ -274,8 +289,7 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 		) {
 			if (item !is BaseRowItem) {
 				currentItem = null
-				//fill in default background
-				backgroundService.clearBackgrounds()
+				heroState.selected.value = null
 			} else {
 				currentItem = item
 				currentRow = row as ListRow
@@ -283,7 +297,8 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 				val itemRowAdapter = row.adapter as? ItemRowAdapter
 				itemRowAdapter?.loadMoreItemsIfNeeded(itemRowAdapter.indexOf(item))
 
-				backgroundService.setBackground(item.baseItem)
+				// the Jelly Cinema banner shows the highlighted title
+				heroState.selected.value = item.baseItem
 			}
 		}
 	}

@@ -14,9 +14,10 @@ android {
 		targetSdk = libs.versions.android.targetSdk.get().toInt()
 
 		// Release version
-		applicationId = namespace
-		versionName = project.getVersionName()
-		versionCode = getVersionCode(versionName!!)
+		// Jelly Cinema TV: replaces the earlier web-page version of the app (same id and signing key)
+		applicationId = "app.jellycinema.tv"
+		versionName = (project.findProperty("jc.versionName") as String?) ?: "2.0.0"
+		versionCode = ((project.findProperty("jc.versionCode") as String?) ?: "100").toInt()
 	}
 
 	buildFeatures {
@@ -58,9 +59,9 @@ android {
 			proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
 
 			// Set package names used in various XML files
-			resValue("string", "app_id", namespace!!)
-			resValue("string", "app_search_suggest_authority", "${namespace}.content")
-			resValue("string", "app_search_suggest_intent_data", "content://${namespace}.content/intent")
+			resValue("string", "app_id", "app.jellycinema.tv")
+			resValue("string", "app_search_suggest_authority", "app.jellycinema.tv.content")
+			resValue("string", "app_search_suggest_intent_data", "content://app.jellycinema.tv.content/intent")
 
 			// Set flavored application name
 			resValue("string", "app_name", "@string/app_name_release")
@@ -75,9 +76,9 @@ android {
 			applicationIdSuffix = ".debug"
 
 			// Set package names used in various XML files
-			resValue("string", "app_id", namespace + applicationIdSuffix)
-			resValue("string", "app_search_suggest_authority", "${namespace + applicationIdSuffix}.content")
-			resValue("string", "app_search_suggest_intent_data", "content://${namespace + applicationIdSuffix}.content/intent")
+			resValue("string", "app_id", "app.jellycinema.tv" + applicationIdSuffix)
+			resValue("string", "app_search_suggest_authority", "app.jellycinema.tv${applicationIdSuffix}.content")
+			resValue("string", "app_search_suggest_intent_data", "content://app.jellycinema.tv${applicationIdSuffix}.content/intent")
 
 			// Set flavored application name
 			resValue("string", "app_name", "@string/app_name_debug")
@@ -97,7 +98,7 @@ android {
 	}
 }
 
-base.archivesName.set("jellyfin-androidtv-v${project.getVersionName()}")
+base.archivesName.set("jellycinema-tv")
 
 tasks.register("versionTxt") {
 	val path = layout.buildDirectory.asFile.get().resolve("version.txt")

@@ -78,8 +78,18 @@ fun ItemRowAdapter.retrieveResumeItems(api: ApiClient, query: GetResumeItemsRequ
 				api.itemsApi.getResumeItems(query).content
 			}
 
+			// Jelly Cinema: Continue Watching hides titles not touched in a long time
+			val hideDays = org.koin.java.KoinJavaComponent.get<org.jellyfin.androidtv.jellycinema.JellyCinemaRepository>(
+				org.jellyfin.androidtv.jellycinema.JellyCinemaRepository::class.java
+			).config.continueWatchingHideAfterDays
+			val cutoff = java.time.LocalDateTime.now().minusDays(hideDays.toLong())
+			val shown = if (hideDays <= 0) response.items else response.items.filter { item ->
+				val last = item.userData?.lastPlayedDate
+				last == null || last.isAfter(cutoff)
+			}
+
 			setItems(
-				items = response.items,
+				items = shown,
 				transform = { item, _ ->
 					BaseItemDtoBaseRowItem(
 						item,
@@ -89,7 +99,7 @@ fun ItemRowAdapter.retrieveResumeItems(api: ApiClient, query: GetResumeItemsRequ
 				}
 			)
 
-			if (response.items.isEmpty()) removeRow()
+			if (shown.isEmpty()) removeRow()
 		}.fold(
 			onSuccess = { notifyRetrieveFinished() },
 			onFailure = { error -> notifyRetrieveFinished(error as? Exception) }

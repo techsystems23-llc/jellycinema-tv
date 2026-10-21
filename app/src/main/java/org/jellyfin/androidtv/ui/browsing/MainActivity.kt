@@ -40,6 +40,24 @@ class MainActivity : FragmentActivity() {
 	private val userRepository by inject<UserRepository>()
 	private val interactionTrackerViewModel by viewModel<InteractionTrackerViewModel>()
 	private val workManager by inject<WorkManager>()
+	private val heroState by inject<org.jellyfin.androidtv.jellycinema.JellyCinemaHeroState>()
+	private var swallowKeyUp = -1
+
+	// Jelly Cinema Theater Mode: the first key press only wakes the screen up
+	override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+		if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+			if (heroState.onInput()) {
+				swallowKeyUp = event.keyCode
+				return true
+			}
+		} else if (event.action == KeyEvent.ACTION_DOWN && swallowKeyUp == event.keyCode) {
+			return true
+		} else if (event.action == KeyEvent.ACTION_UP && swallowKeyUp == event.keyCode) {
+			swallowKeyUp = -1
+			return true
+		}
+		return super.dispatchKeyEvent(event)
+	}
 
 	override fun onCreate(savedInstanceState: Bundle?) {
 		applyTheme()

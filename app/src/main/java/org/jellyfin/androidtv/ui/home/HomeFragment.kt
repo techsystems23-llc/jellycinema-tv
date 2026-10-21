@@ -5,6 +5,23 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.foundation.focusGroup
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import org.jellyfin.androidtv.jellycinema.HeroBackdrop
+import org.jellyfin.androidtv.jellycinema.HeroInfo
+import org.jellyfin.androidtv.jellycinema.JellyCinemaHeroState
+import org.jellyfin.androidtv.jellycinema.JellyCinemaRepository
+import org.jellyfin.androidtv.jellycinema.UpdateChecker
+import org.jellyfin.sdk.api.client.ApiClient
+import timber.log.Timber
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
@@ -34,6 +51,10 @@ import org.jellyfin.androidtv.ui.shared.toolbar.MainToolbarActiveButton
 import org.koin.android.ext.android.inject
 
 class HomeFragment : Fragment() {
+	private val api by inject<ApiClient>()
+	private val jellyCinema by inject<JellyCinemaRepository>()
+	private val heroState by inject<JellyCinemaHeroState>()
+	private val userRepository by inject<org.jellyfin.androidtv.auth.repository.UserRepository>()
 	private val sessionRepository by inject<SessionRepository>()
 	private val serverRepository by inject<ServerRepository>()
 	private val notificationRepository by inject<NotificationsRepository>()
@@ -44,36 +65,113 @@ class HomeFragment : Fragment() {
 		savedInstanceState: Bundle?
 	) = content {
 		val rowsFocusRequester = remember { FocusRequester() }
-		LaunchedEffect(rowsFocusRequester) { rowsFocusRequester.requestFocus() }
+		val playFocusRequester = remember { FocusRequester() }
+		val slides by heroState.slides.collectAsState()
+		val index by heroState.index.collectAsState()
+		val preview by heroState.preview.collectAsState()
+		val selected by heroState.selected.collectAsState()
+		val theater by heroState.theater.collectAsState()
+		val trailerPlaying by heroState.trailerPlaying.collectAsState()
+		val cfg = jellyCinema.config
+		val showHero = cfg.heroEnabled && slides.isNotEmpty()
+		val chromeAlpha by animateFloatAsState(if (theater) 0f else 1f, tween(900), label = "theater")
 
-		Column {
-			MainToolbar(MainToolbarActiveButton.Home)
+		// first focus: the banner's Play button once titles are in, else the rows
+		var focusedOnce by remember { mutableStateOf(false) }
+		LaunchedEffect(showHero) {
+			if (focusedOnce) return@LaunchedEffect
+			if (showHero) {
+				delay(150)
+				runCatching { playFocusRequester.requestFocus() }.onSuccess { focusedOnce = true }
+			} else {
+				delay(4000)
+				if (!focusedOnce && !heroState.slides.value.isNotEmpty()) runCatching { rowsFocusRequester.requestFocus() }
+			}
+		}
 
-			// The leanback code has its own awful focus handling that doesn't work properly with Compose view inteop to workaround this
-			// issue we add custom behavior that only allows focus exit when the current selected row is the first one. Additionally when
-			// we do switch the focus, we reset the leanback state so it won't cause weird behavior when focus is regained
-			var rowsSupportFragment by remember { mutableStateOf<HomeRowsFragment?>(null) }
-			AndroidFragment<HomeRowsFragment>(
-				modifier = Modifier
-					.focusGroup()
-					.focusRequester(rowsFocusRequester)
-					.focusProperties {
-						onExit = {
-							val isFirstRowSelected = rowsSupportFragment?.selectedPosition?.let { it <= 0 } ?: false
-							if (requestedFocusDirection != FocusDirection.Up || !isFirstRowSelected) {
-								cancelFocusChange()
-							} else {
-								rowsSupportFragment?.selectedPosition = 0
-								rowsSupportFragment?.verticalGridView?.clearFocus()
+		// slideshow: next title every few seconds (waits while a trailer plays or a card is shown)
+		LaunchedEffect(index, preview, trailerPlaying, slides.size) {
+			if (preview != null || trailerPlaying || slides.size < 2) return@LaunchedEffect
+			delay(cfg.heroSlideSeconds * 1000L)
+			heroState.next()
+		}
+
+		// banner follows the highlighted card after a short pause, then goes back to the slideshow
+		LaunchedEffect(selected) {
+			val item = selected
+			if (item == null || !cfg.followSelection) return@LaunchedEffect
+			delay(cfg.focusDelayMs)
+			heroState.preview.value = item
+			delay(cfg.previewTimeoutSeconds * 1000L)
+			heroState.preview.value = null
+		}
+
+		// Theater Mode after a while without a key press
+		LaunchedEffect(cfg.theaterEnabled, showHero) {
+			if (!cfg.theaterEnabled || !showHero) return@LaunchedEffect
+			while (true) {
+				delay(5000)
+				if (System.currentTimeMillis() - heroState.lastInput > cfg.theaterIdleSeconds * 1000L) heroState.enterTheater()
+			}
+		}
+
+		Box(Modifier.fillMaxSize()) {
+			if (showHero) HeroBackdrop(heroState)
+
+			Column {
+				Box(Modifier.alpha(chromeAlpha)) { MainToolbar(MainToolbarActiveButton.Home) }
+
+				if (showHero) HeroInfo(
+					state = heroState,
+					playFocusRequester = playFocusRequester,
+					modifier = Modifier.fillMaxWidth().height(if (theater) 400.dp else 248.dp),
+					onBannerFocused = {
+						heroState.selected.value = null
+						heroState.preview.value = null
+					},
+				)
+
+				// The leanback code has its own awful focus handling that doesn't work properly with Compose view inteop to workaround this
+				// issue we add custom behavior that only allows focus exit when the current selected row is the first one. Additionally when
+				// we do switch the focus, we reset the leanback state so it won't cause weird behavior when focus is regained
+				var rowsSupportFragment by remember { mutableStateOf<HomeRowsFragment?>(null) }
+				AndroidFragment<HomeRowsFragment>(
+					modifier = Modifier
+						.alpha(chromeAlpha)
+						.focusGroup()
+						.focusRequester(rowsFocusRequester)
+						.focusProperties {
+							onExit = {
+								val isFirstRowSelected = rowsSupportFragment?.selectedPosition?.let { it <= 0 } ?: false
+								if (requestedFocusDirection != FocusDirection.Up || !isFirstRowSelected) {
+									cancelFocusChange()
+								} else {
+									rowsSupportFragment?.selectedPosition = 0
+									rowsSupportFragment?.verticalGridView?.clearFocus()
+								}
 							}
 						}
+						.fillMaxWidth()
+						.weight(1f),
+					onUpdate = { fragment ->
+						rowsSupportFragment = fragment
 					}
-					.fillMaxSize(),
-				onUpdate = { fragment ->
-					rowsSupportFragment = fragment
-				}
-			)
+				)
+			}
 		}
+	}
+
+	override fun onResume() {
+		super.onResume()
+		heroState.homeVisible = true
+		heroState.onInput()
+	}
+
+	override fun onPause() {
+		super.onPause()
+		heroState.homeVisible = false
+		heroState.selected.value = null
+		heroState.preview.value = null
 	}
 
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -89,5 +187,19 @@ class HomeFragment : Fragment() {
 				notificationRepository.updateServerNotifications(server)
 			}
 			.launchIn(viewLifecycleOwner.lifecycleScope)
+
+		// Jelly Cinema banner titles (only what this person may watch) and app updates from the server
+		viewLifecycleOwner.lifecycleScope.launch {
+			val cfg = jellyCinema.ensureConfig()
+			if (cfg.heroEnabled && heroState.slides.value.isEmpty()) {
+				val items = runCatching { jellyCinema.heroItems() }.onFailure { Timber.w(it, "Banner titles failed") }.getOrDefault(emptyList())
+				heroState.setSlides(items)
+			}
+			api.baseUrl?.let { url -> UpdateChecker.check(requireContext(), url) }
+			// admins keep the shared Top 10 ranking fresh, in the background (shows next time Home opens)
+			userRepository.currentUser.value?.takeIf { it.policy?.isAdministrator == true }?.let { me ->
+				runCatching { jellyCinema.refreshRankingIfNeeded(me) }.onFailure { Timber.w(it, "Top 10 refresh failed") }
+			}
+		}
 	}
 }
