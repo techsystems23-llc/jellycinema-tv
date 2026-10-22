@@ -45,6 +45,8 @@ class MainActivity : FragmentActivity() {
 
 	// Jelly Cinema Theater Mode: the first key press only wakes the screen up
 	override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+		// keys pressed during the start-up intro are ignored
+		if (org.jellyfin.androidtv.jellycinema.JellyCinemaIntroState.showing && event.keyCode != KeyEvent.KEYCODE_BACK) return true
 		if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
 			if (heroState.onInput()) {
 				swallowKeyUp = event.keyCode
@@ -91,6 +93,7 @@ class MainActivity : FragmentActivity() {
 					)
 					InAppScreensaver()
 					MainActivitySettings()
+					org.jellyfin.androidtv.jellycinema.JellyCinemaIntro()
 				}
 			}
 		}

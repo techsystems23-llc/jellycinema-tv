@@ -161,12 +161,19 @@ private fun findWebView(v: android.view.View): android.webkit.WebView? {
 
 /** YouTube trailers that refused to play in an embedded player (kept on the TV, so they're skipped next time). */
 object TrailerMemory {
-	private const val PREFS = "jellycinema_trailers"
+	private const val PREFS = "jellycinema_trailers2"
 	@Volatile private var bad: MutableSet<String>? = null
 	fun load(context: android.content.Context) {
 		if (bad == null) bad = context.getSharedPreferences(PREFS, 0).getStringSet("bad", emptySet()).orEmpty().toMutableSet()
 	}
 	fun isBad(id: String) = bad?.contains(id) == true
+
+	/** Titles whose trailer can play go first; titles whose every trailer was refused go last. */
+	fun playableFirst(items: List<BaseItemDto>): List<BaseItemDto> {
+		if (bad.isNullOrEmpty()) return items
+		val (ok, refused) = items.partition { (it.localTrailerCount ?: 0) > 0 || youTubeIds(it).isNotEmpty() || it.remoteTrailers.isNullOrEmpty() }
+		return ok + refused
+	}
 	fun markBad(context: android.content.Context, id: String) {
 		load(context)
 		bad?.add(id)
@@ -200,10 +207,12 @@ fun HeroBackdrop(state: JellyCinemaHeroState, modifier: Modifier = Modifier) {
 			LaunchedEffect(trailerItem.id) {
 				state.trailerPlaying.value = false
 				state.trailerVisible.value = false
+				state.trailerPending.value = true
 				delay(cfg.heroTrailerDelaySeconds * 1000L)
 				source = resolveTrailer(api, trailerItem)
+				if (source == null || source == TrailerSource.None) state.trailerPending.value = false
 			}
-			val onPlaying: (Boolean) -> Unit = { state.trailerPlaying.value = it }
+			val onPlaying: (Boolean) -> Unit = { state.trailerPending.value = false; state.trailerPlaying.value = it }
 			val onFinished: () -> Unit = {
 				state.trailerPlaying.value = false
 				if (state.preview.value == null) state.next()
@@ -213,10 +222,11 @@ fun HeroBackdrop(state: JellyCinemaHeroState, modifier: Modifier = Modifier) {
 					onVisible = { state.trailerVisible.value = it },
 					onFailed = { source = src.fallback.takeIf { it.isNotEmpty() }?.let { TrailerSource.YouTube(it) } ?: TrailerSource.None })
 				is TrailerSource.YouTube -> TrailerView(src.ids, api.baseUrl, onPlaying, { state.trailerVisible.value = it }, onFinished)
+				TrailerSource.None -> LaunchedEffect(Unit) { state.trailerPending.value = false }
 				else -> Unit
 			}
 		} else {
-			LaunchedEffect(Unit) { state.trailerPlaying.value = false }
+			LaunchedEffect(Unit) { state.trailerPlaying.value = false; state.trailerPending.value = false }
 		}
 
 
@@ -307,10 +317,17 @@ private fun BoxScope.TrailerView(
 							else -> Unit
 						}
 					}
+					var lastCode = ""
+					override fun onVideoId(youTubePlayer: YouTubePlayer, videoId: String) {
+						// our player page reports YouTube's raw error number this way (see res/raw/ayp_youtube_player.html)
+						if (videoId.startsWith("jc-error-")) lastCode = videoId.removePrefix("jc-error-")
+					}
 					override fun onError(youTubePlayer: YouTubePlayer, error: PlayerConstants.PlayerError) {
-						JellyCinemaDiagnostics.trailer("YouTube trailer ${videoIds.getOrNull(which)} refused: $error")
-						// remember it, so this trailer isn't tried again
-						videoIds.getOrNull(which)?.let { TrailerMemory.markBad(context, it) }
+						val code = lastCode.also { lastCode = "" }
+						android.util.Log.i("JellyCinemaTrailer", "error ${videoIds.getOrNull(which)} $error code=$code")
+						JellyCinemaDiagnostics.trailer("YouTube trailer ${videoIds.getOrNull(which)} refused: $error ($code)")
+						// remember trailers YouTube will never play here (removed, embedding off, age-restricted = 151), so they aren't tried again
+						if (code in setOf("100", "101", "150", "151")) videoIds.getOrNull(which)?.let { TrailerMemory.markBad(context, it) }
 						which++
 						if (which < videoIds.size && which < 4) youTubePlayer.loadVideo(videoIds[which], 0f)
 						else { playing = false; onVisible(false); onPlaying(false) }

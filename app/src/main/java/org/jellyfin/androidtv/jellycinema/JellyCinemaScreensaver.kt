@@ -42,6 +42,7 @@ fun JellyCinemaScreensaver(onEmpty: @Composable () -> Unit) {
 	val slides by state.slides.collectAsState()
 	val index by state.index.collectAsState()
 	val trailerPlaying by state.trailerPlaying.collectAsState()
+	val trailerPending by state.trailerPending.collectAsState()
 
 	LaunchedEffect(Unit) {
 		val items = runCatching {
@@ -49,14 +50,16 @@ fun JellyCinemaScreensaver(onEmpty: @Composable () -> Unit) {
 			// reuse Home's titles when they're loaded, start from a different one
 			home.slides.value.ifEmpty { repo.heroItems() }.shuffled()
 		}.onFailure { Timber.w(it, "Screensaver titles failed") }.getOrDefault(emptyList())
-		state.setSlides(items)
+		state.setSlides(TrailerMemory.playableFirst(items))
 		loaded = true
 	}
 
 	// next title after the slide time, or when the trailer finishes (HeroBackdrop calls next())
-	LaunchedEffect(index, trailerPlaying, slides.size) {
+	val slideStart = remember(index) { System.currentTimeMillis() }
+	LaunchedEffect(index, trailerPlaying, trailerPending, slides.size) {
 		if (trailerPlaying || slides.size < 2) return@LaunchedEffect
-		delay(repo.config.heroSlideSeconds * 1000L)
+		val wait = if (trailerPending && repo.config.heroTrailers) 25_000L else repo.config.heroSlideSeconds * 1000L
+		delay((wait - (System.currentTimeMillis() - slideStart)).coerceAtLeast(1_500L))
 		state.next()
 	}
 

@@ -75,6 +75,7 @@ class HomeFragment : Fragment() {
 		val selected by heroState.selected.collectAsState()
 		val theater by heroState.theater.collectAsState()
 		val trailerPlaying by heroState.trailerPlaying.collectAsState()
+		val trailerPending by heroState.trailerPending.collectAsState()
 		val cfg = jellyCinema.config
 		val showHero = cfg.heroEnabled && slides.isNotEmpty()
 		val chromeAlpha by animateFloatAsState(if (theater) 0f else 1f, tween(900), label = "theater")
@@ -105,9 +106,12 @@ class HomeFragment : Fragment() {
 		}
 
 		// slideshow: next title every few seconds (waits while a trailer plays or a card is shown)
-		LaunchedEffect(index, preview, trailerPlaying, slides.size) {
+		// (while a trailer is still loading it waits up to 25 s for it, so trailers get the chance to play)
+		val slideStart = remember(index, preview) { System.currentTimeMillis() }
+		LaunchedEffect(index, preview, trailerPlaying, trailerPending, slides.size) {
 			if (preview != null || trailerPlaying || slides.size < 2) return@LaunchedEffect
-			delay(cfg.heroSlideSeconds * 1000L)
+			val wait = if (trailerPending && cfg.heroTrailers) 25_000L else cfg.heroSlideSeconds * 1000L
+			delay((wait - (System.currentTimeMillis() - slideStart)).coerceAtLeast(1_500L))
 			heroState.next()
 		}
 
@@ -218,7 +222,8 @@ class HomeFragment : Fragment() {
 			val cfg = jellyCinema.ensureConfig()
 			if (cfg.heroEnabled && heroState.slides.value.isEmpty()) {
 				val items = runCatching { jellyCinema.heroItems() }.onFailure { Timber.w(it, "Banner titles failed") }.getOrDefault(emptyList())
-				heroState.setSlides(items)
+				org.jellyfin.androidtv.jellycinema.TrailerMemory.load(requireContext())
+				heroState.setSlides(org.jellyfin.androidtv.jellycinema.TrailerMemory.playableFirst(items))
 			}
 			UpdateChecker.check(requireContext(), api.baseUrl)
 			// admins keep the shared Top 10 ranking fresh, in the background (shows next time Home opens)
