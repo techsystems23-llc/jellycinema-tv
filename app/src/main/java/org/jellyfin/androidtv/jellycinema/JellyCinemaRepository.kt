@@ -242,27 +242,34 @@ class JellyCinemaRepository(private val api: ApiClient) {
 	}
 
 	/** Banner titles: random titles with a backdrop, from what this person may watch. */
-	suspend fun heroItems(): List<BaseItemDto> = withContext(Dispatchers.IO) {
+	suspend fun heroItems(): List<BaseItemDto> = withContext(Dispatchers.IO) { coroutineScope {
 		val cfg = config
-		val want = cfg.heroMaxItems + 6
+		// a long rotation (at least 50) of titles that have a trailer, so nearly every slide plays one
+		val count = maxOf(cfg.heroMaxItems, 50)
 		val parents: List<UUID?> = libraryIds(cfg.heroLibraries).ifEmpty { listOf(null) }
-		val items = parents.flatMap { parent ->
-			runCatching {
-				api.itemsApi.getItems(
-					includeItemTypes = cfg.heroTypes,
-					recursive = true,
-					sortBy = listOf(ItemSortBy.RANDOM),
-					limit = want,
-					imageTypes = listOf(ImageType.BACKDROP),
-					fields = heroFields,
-					enableUserData = true,
-					parentId = parent,
-					filters = if (cfg.heroSkipWatched) listOf(ItemFilter.IS_UNPLAYED) else null,
-				).content.items
-			}.getOrDefault(emptyList())
-		}.distinctBy { it.id }.filter { !it.backdropImageTags.isNullOrEmpty() }.shuffled()
-		verify(items.take(cfg.heroMaxItems + 3)).take(cfg.heroMaxItems)
-	}
+		suspend fun fetch(withTrailer: Boolean, limit: Int) = parents.map { parent ->
+			async {
+				runCatching {
+					api.itemsApi.getItems(
+						includeItemTypes = cfg.heroTypes,
+						recursive = true,
+						sortBy = listOf(ItemSortBy.RANDOM),
+						limit = limit,
+						imageTypes = listOf(ImageType.BACKDROP),
+						hasTrailer = if (withTrailer) true else null,
+						fields = heroFields,
+						enableUserData = true,
+						parentId = parent,
+						filters = if (cfg.heroSkipWatched) listOf(ItemFilter.IS_UNPLAYED) else null,
+					).content.items
+				}.getOrDefault(emptyList())
+			}
+		}.awaitAll().flatten()
+		var items = fetch(true, count + 20).filter { !it.backdropImageTags.isNullOrEmpty() }.distinctBy { it.id }
+		// a library with few trailers: fill up with other titles
+		if (items.size < count) items = (items + fetch(false, count).filter { !it.backdropImageTags.isNullOrEmpty() }).distinctBy { it.id }
+		items.shuffled().take(count)
+	} }
 
 	// ---------------------------------------------------------------------------------------------
 	// Top 10: the ranking is shared with the Jelly Cinema web scripts (DisplayPreferences "jc-top10").

@@ -151,13 +151,35 @@ private fun BaseItemDto.taglineText(): String? = when (type) {
 private fun youTubeIds(item: BaseItemDto): List<String> = item.remoteTrailers.orEmpty().mapNotNull { t ->
 	val u = t.url ?: return@mapNotNull null
 	Regex("""(?:youtube(?:-nocookie)?\.com/(?:watch\?(?:.*&)?v=|embed/)|youtu\.be/)([A-Za-z0-9_-]{6,})""").find(u)?.groupValues?.get(1)
-}.distinct()
+}.distinct().filterNot { TrailerMemory.isBad(it) }
+
+private fun findWebView(v: android.view.View): android.webkit.WebView? {
+	if (v is android.webkit.WebView) return v
+	if (v is android.view.ViewGroup) for (i in 0 until v.childCount) findWebView(v.getChildAt(i))?.let { return it }
+	return null
+}
+
+/** YouTube trailers that refused to play in an embedded player (kept on the TV, so they're skipped next time). */
+object TrailerMemory {
+	private const val PREFS = "jellycinema_trailers"
+	@Volatile private var bad: MutableSet<String>? = null
+	fun load(context: android.content.Context) {
+		if (bad == null) bad = context.getSharedPreferences(PREFS, 0).getStringSet("bad", emptySet()).orEmpty().toMutableSet()
+	}
+	fun isBad(id: String) = bad?.contains(id) == true
+	fun markBad(context: android.content.Context, id: String) {
+		load(context)
+		bad?.add(id)
+		context.getSharedPreferences(PREFS, 0).edit().putStringSet("bad", bad?.toSet()).apply()
+	}
+}
 
 // ------------------------------------------------------------------------------------------------
 // Backdrop: the full-screen picture (and trailer) behind everything on Home
 
 @Composable
 fun HeroBackdrop(state: JellyCinemaHeroState, modifier: Modifier = Modifier) {
+	TrailerMemory.load(LocalContext.current)
 	val api = koinInject<ApiClient>()
 	val repo = koinInject<JellyCinemaRepository>()
 	val slides by state.slides.collectAsState()
@@ -287,11 +309,21 @@ private fun BoxScope.TrailerView(
 					}
 					override fun onError(youTubePlayer: YouTubePlayer, error: PlayerConstants.PlayerError) {
 						JellyCinemaDiagnostics.trailer("YouTube trailer ${videoIds.getOrNull(which)} refused: $error")
+						// remember it, so this trailer isn't tried again
+						videoIds.getOrNull(which)?.let { TrailerMemory.markBad(context, it) }
 						which++
 						if (which < videoIds.size && which < 4) youTubePlayer.loadVideo(videoIds[which], 0f)
 						else { playing = false; onVisible(false); onPlaying(false) }
 					}
+					override fun onPlaybackQualityChange(youTubePlayer: YouTubePlayer, playbackQuality: PlayerConstants.PlaybackQuality) {
+						android.util.Log.i("JellyCinemaTrailer", "quality $playbackQuality")
+						JellyCinemaDiagnostics.trailer("YouTube trailer playing (${videoIds.getOrNull(which)}, $playbackQuality)")
+					}
 				}, false, options)
+				// YouTube picks the picture quality from the player's size in web pixels. On a TV a full-screen
+				// banner is only 960 web pixels wide, so it chose 480p (pixelated). Draw the page at half scale:
+				// the player becomes 1920 web pixels wide and YouTube sends 1080p.
+				post { findWebView(this)?.let { wv -> wv.setInitialScale(50); wv.settings.useWideViewPort = false } }
 			}
 		},
 		onRelease = { it.release(); onVisible(false); onPlaying(false) },
@@ -486,7 +518,10 @@ fun HeroInfo(
 			}
 			Spacer(Modifier.width(18.dp))
 			// slide dots
-			if (preview == null && slides.size > 1) Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+			// many titles: a small "12 / 50" instead of a long row of dots
+			if (preview == null && slides.size > 15) Text("${index + 1} / ${slides.size}",
+				style = TextStyle(fontSize = 13.sp, letterSpacing = 1.sp, color = Color.White.copy(alpha = 0.7f)))
+			else if (preview == null && slides.size > 1) Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
 				slides.indices.forEach { i ->
 					Box(Modifier.height(5.dp).width(if (i == index) 20.dp else 5.dp).clip(CircleShape)
 						.background(if (i == index) Color.White else Color.White.copy(alpha = 0.35f)))
