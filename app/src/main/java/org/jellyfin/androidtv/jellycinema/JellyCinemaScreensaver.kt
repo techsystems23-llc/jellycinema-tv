@@ -84,11 +84,11 @@ fun JellyCinemaScreensaver(onEmpty: @Composable () -> Unit) {
 		}
 		// the season's falling leaves and bats (snow at Christmas...) keep going in the screensaver
 		SeasonalEffects()
-		// small brand mark in the corner
+		// Jelly Cinema logo in the top-right corner (same place as Home's full screen)
 		Image(
 			painter = painterResource(R.drawable.app_logo),
 			contentDescription = null,
-			modifier = Modifier.align(Alignment.TopEnd).padding(top = 36.dp, end = 48.dp).height(28.dp).alpha(0.8f),
+			modifier = Modifier.align(Alignment.TopEnd).padding(end = 48.dp, top = 31.dp).height(34.dp),
 		)
 	}
 }

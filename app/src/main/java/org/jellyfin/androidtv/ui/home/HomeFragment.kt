@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
@@ -184,6 +185,18 @@ class HomeFragment : Fragment() {
 			}
 
 			// seasonal falling leaves, bats, snow... over the whole screen
+			// Jelly Cinema logo, top right: beside the settings button and clock, and in the corner in full screen (Theater Mode)
+			if (showHero) {
+				val logoX by androidx.compose.animation.core.animateDpAsState(if (theater) 48.dp else 140.dp, tween(900), label = "logo-x")
+				androidx.compose.foundation.Image(
+					painter = androidx.compose.ui.res.painterResource(org.jellyfin.androidtv.R.drawable.app_logo),
+					contentDescription = null,
+					modifier = Modifier
+						.align(androidx.compose.ui.Alignment.TopEnd)
+						.padding(end = logoX, top = 31.dp)
+						.height(34.dp),
+				)
+			}
 			org.jellyfin.androidtv.jellycinema.SeasonalEffects()
 		}
 	}
