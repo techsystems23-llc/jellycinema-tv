@@ -378,7 +378,7 @@ private fun CardViewHolderContent(
 			// Jelly Cinema: a white frame shows the highlighted card (no zoom, so cards never cover each other)
 			modifier = Modifier
 				.size(size)
-				.then(if (focused) Modifier.border(3.dp, androidx.compose.ui.graphics.Color.White, JellyfinTheme.shapes.medium) else Modifier)
+				.then(if (focused) Modifier.border(3.dp, org.jellyfin.androidtv.jellycinema.JellyCinemaTheme.accent, JellyfinTheme.shapes.medium) else Modifier)
 		)
 	}
 

@@ -46,7 +46,8 @@ object JellyCinemaIntroState {
 	@Volatile var showing = false
 }
 
-private const val INTRO_SECONDS = 3.4f
+private const val INTRO_SECONDS = 3.4f   // timeline the steps are written in
+private const val INTRO_PLAY_MS = 4_500  // played over 4.5 s (about as long as Netflix's intro)
 
 private fun progress(t: Float, start: Float, end: Float) = ((t - start) / (end - start)).coerceIn(0f, 1f)
 private fun easeOut(x: Float) = 1f - (1f - x) * (1f - x) * (1f - x)
@@ -91,7 +92,7 @@ fun JellyCinemaIntro() {
 
 	// Play the animation, then leave once Home has its banner (or after a few seconds at most)
 	LaunchedEffect(Unit) {
-		clock.animateTo(INTRO_SECONDS, tween((INTRO_SECONDS * 1000).toInt(), easing = LinearEasing))
+		clock.animateTo(INTRO_SECONDS, tween(INTRO_PLAY_MS, easing = LinearEasing))
 		withTimeoutOrNull(4_500) { heroState.slides.first { it.isNotEmpty() } }
 		delay(200)
 		dismiss = true

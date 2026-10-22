@@ -185,15 +185,15 @@ class HomeFragment : Fragment() {
 			}
 
 			// seasonal falling leaves, bats, snow... over the whole screen
-			// Jelly Cinema logo, top right: beside the settings button and clock, and in the corner in full screen (Theater Mode)
+			// Jelly Cinema logo, top right: under the clock, and up in the corner in full screen (Theater Mode)
 			if (showHero) {
-				val logoX by androidx.compose.animation.core.animateDpAsState(if (theater) 48.dp else 140.dp, tween(900), label = "logo-x")
+				val logoTop by androidx.compose.animation.core.animateDpAsState(if (theater) 31.dp else 80.dp, tween(900), label = "logo-top")
 				androidx.compose.foundation.Image(
 					painter = androidx.compose.ui.res.painterResource(org.jellyfin.androidtv.R.drawable.app_logo),
 					contentDescription = null,
 					modifier = Modifier
 						.align(androidx.compose.ui.Alignment.TopEnd)
-						.padding(end = logoX, top = 31.dp)
+						.padding(end = 48.dp, top = logoTop)
 						.height(34.dp),
 				)
 			}

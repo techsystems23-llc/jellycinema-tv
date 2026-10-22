@@ -158,7 +158,7 @@ private fun Top10Card(item: BaseRowItem?, rank: Int, focused: Boolean) {
 				.shadow(if (focused) 14.dp else 6.dp, RoundedCornerShape(6.dp))
 				.clip(RoundedCornerShape(6.dp))
 				.background(Color(0xFF1F2937))
-				.then(if (focused) Modifier.border(3.dp, Color.White, RoundedCornerShape(6.dp)) else Modifier),
+				.then(if (focused) Modifier.border(3.dp, JellyCinemaTheme.accent, RoundedCornerShape(6.dp)) else Modifier),
 		) {
 			val tag = base?.imageTags?.get(ImageType.PRIMARY)
 			if (base != null && tag != null) {
