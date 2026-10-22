@@ -208,6 +208,8 @@ fun HeroBackdrop(state: JellyCinemaHeroState, modifier: Modifier = Modifier) {
 				state.trailerPlaying.value = false
 				state.trailerVisible.value = false
 				state.trailerPending.value = true
+				// the trailer player is heavy to start: wait until the start-up intro has finished, so it plays smoothly
+				while (JellyCinemaIntroState.showing) delay(100)
 				delay(cfg.heroTrailerDelaySeconds * 1000L)
 				source = resolveTrailer(api, trailerItem)
 				if (source == null || source == TrailerSource.None) state.trailerPending.value = false

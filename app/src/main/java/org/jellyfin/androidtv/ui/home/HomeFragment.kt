@@ -187,7 +187,7 @@ class HomeFragment : Fragment() {
 			// seasonal falling leaves, bats, snow... over the whole screen
 			// Jelly Cinema logo, top right: under the clock, and up in the corner in full screen (Theater Mode)
 			if (showHero) {
-				val logoTop by androidx.compose.animation.core.animateDpAsState(if (theater) 31.dp else 66.dp, tween(900), label = "logo-top")
+				val logoTop by androidx.compose.animation.core.animateDpAsState(if (theater) 31.dp else 58.dp, tween(900), label = "logo-top")
 				androidx.compose.foundation.Image(
 					painter = androidx.compose.ui.res.painterResource(org.jellyfin.androidtv.R.drawable.app_logo),
 					contentDescription = null,
@@ -238,6 +238,8 @@ class HomeFragment : Fragment() {
 				org.jellyfin.androidtv.jellycinema.TrailerMemory.load(requireContext())
 				heroState.setSlides(org.jellyfin.androidtv.jellycinema.TrailerMemory.playableFirst(items))
 			}
+			// after the start-up intro, so it doesn't compete with it
+			while (org.jellyfin.androidtv.jellycinema.JellyCinemaIntroState.showing) kotlinx.coroutines.delay(200)
 			UpdateChecker.check(requireContext(), api.baseUrl)
 			// admins keep the shared Top 10 ranking fresh, in the background (shows next time Home opens)
 			userRepository.currentUser.value?.takeIf { it.policy?.isAdministrator == true }?.let { me ->
