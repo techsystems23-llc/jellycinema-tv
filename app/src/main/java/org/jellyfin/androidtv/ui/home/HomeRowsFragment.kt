@@ -36,7 +36,9 @@ import org.jellyfin.androidtv.data.repository.UserViewsRepository
 import org.jellyfin.androidtv.data.service.BackgroundService
 import org.jellyfin.androidtv.jellycinema.JellyCinemaHeroState
 import org.jellyfin.androidtv.jellycinema.JellyCinemaRepository
-import org.jellyfin.androidtv.jellycinema.loadHomeRows
+import org.jellyfin.androidtv.jellycinema.loadDiscoverRows
+import org.jellyfin.androidtv.jellycinema.loadTopRows
+import kotlinx.coroutines.async
 import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.preference.UserSettingPreferences
 import org.jellyfin.androidtv.ui.GridButton
@@ -102,52 +104,49 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 				userRepository.currentUser.filterNotNull().first()
 			}
 
-			// Jelly Cinema rows (seasonal, Top 10, Picks) load alongside the regular sections
-			val jcRows = runCatching {
-				jellyCinema.ensureConfig()
-				jellyCinema.loadHomeRows(currentUser)
-			}.onFailure { Timber.w(it, "Jelly Cinema rows failed") }.getOrNull()
+			// Jelly Cinema rows load in the background (not holding up Jellyfin's own rows); they slot in
+			// when ready: Top 10 / seasonal / Picks at the top, the discover rows after Recently Added.
+			runCatching { jellyCinema.ensureConfig() }
+			val topJob = async { runCatching { jellyCinema.loadTopRows(currentUser) }.onFailure { Timber.w(it, "Jelly Cinema top rows failed") }.getOrDefault(emptyList()) }
+			val discoverJob = async { runCatching { jellyCinema.loadDiscoverRows(currentUser) }.onFailure { Timber.w(it, "Jelly Cinema rows failed") }.getOrDefault(emptyList()) }
 
 			// Start out with default sections
 			val homesections = userSettingPreferences.activeHomesections
 
-			// Make sure the rows are empty
-			val rows = mutableListOf<HomeFragmentRow>()
-
 			// Check for coroutine cancellation
 			if (!isActive) return@launch
 
-			// Actually add the sections
-			// Jelly Cinema order: Top 10 first, then the seasonal rows (Halloween...), Picks, then the regular sections
-			jcRows?.let { rows.addAll(it.top10); rows.addAll(it.seasonal); rows.addAll(it.picks) }
-			// Then the same rows, in the same order, as the Jelly Cinema home page on the web
+			// The same rows, in the same order, as the Jelly Cinema home page on the web
 			// (made by the app itself, so no Home Screen Sections plugin is needed):
-			// My Media, Continue Watching, Next Up, Recently Added Movies/Shows, Because You Watched,
-			// genre rows, Collections, Watch Again.
+			// My Media, Continue Watching, Next Up, Recently Added Movies/Shows, then (added later)
+			// Because You Watched, genre rows, Collections, Watch Again.
+			val rows = mutableListOf<HomeFragmentRow>()
 			val views = userViewsRepository.views.first()
 			rows.add(HomeFragmentViewsRow(small = false))
 			rows.add(helper.loadResumeVideo())
 			rows.add(helper.loadNextUp())
 			rows.add(helper.loadRecentlyAdded(views))
-			jcRows?.let { rows.addAll(it.because); rows.addAll(it.genres); rows.addAll(it.collections); rows.addAll(it.watchAgain) }
-			if (HomeSectionType.RESUME_AUDIO in homesections) rows.add(helper.loadResumeAudio())
+			val extraRows = mutableListOf<HomeFragmentRow>()
+			if (HomeSectionType.RESUME_AUDIO in homesections) extraRows.add(helper.loadResumeAudio())
 			if (HomeSectionType.LIVE_TV in homesections && currentUser.policy?.enableLiveTvAccess == true) {
-				rows.add(HomeFragmentLiveTVRow(requireActivity(), userRepository))
-				rows.add(helper.loadOnNow())
+				extraRows.add(HomeFragmentLiveTVRow(requireActivity(), userRepository))
+				extraRows.add(helper.loadOnNow())
 			}
+
+			@Suppress("UNCHECKED_CAST")
+			val rowsAdapter = adapter as MutableObjectAdapter<Row>
+			val cardPresenter = CardPresenter()
+			var topIndex = 0
 
 			// Add sections to layout
 			withContext(Dispatchers.Main) {
-				val cardPresenter = CardPresenter()
-
-				// Add rows in order
-				notificationsRow.addToRowsAdapter(requireContext(), cardPresenter, adapter as MutableObjectAdapter<Row>)
-				nowPlaying.addToRowsAdapter(requireContext(), cardPresenter, adapter as MutableObjectAdapter<Row>)
-				for (row in rows) row.addToRowsAdapter(requireContext(), cardPresenter, adapter as MutableObjectAdapter<Row>)
+				notificationsRow.addToRowsAdapter(requireContext(), cardPresenter, rowsAdapter)
+				nowPlaying.addToRowsAdapter(requireContext(), cardPresenter, rowsAdapter)
+				topIndex = rowsAdapter.size()
+				for (row in rows) row.addToRowsAdapter(requireContext(), cardPresenter, rowsAdapter)
+				for (row in extraRows) row.addToRowsAdapter(requireContext(), cardPresenter, rowsAdapter)
 
 				// Wire up Live TV sibling rows so the On Now row removes the buttons row when empty
-				@Suppress("UNCHECKED_CAST")
-				val rowsAdapter = adapter as MutableObjectAdapter<Row>
 				for (i in 0 until rowsAdapter.size()) {
 					val listRow = rowsAdapter.get(i) as? ListRow ?: continue
 					val itemAdapter = listRow.adapter as? ItemRowAdapter ?: continue
@@ -156,6 +155,24 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 						if (previousRow != null) itemAdapter.setSiblingRow(previousRow)
 					}
 				}
+			}
+
+			// Top 10, Halloween, Picks: first on the page
+			val top = topJob.await()
+			if (isActive) withContext(Dispatchers.Main) {
+				val keep = selectedPosition
+				var at = topIndex
+				for (row in top) if (row.addAt(requireContext(), cardPresenter, rowsAdapter, at)) at++
+				// don't let the new rows move the highlight if someone is already in the rows
+				if (keep > 0) setSelectedPosition(keep + (at - topIndex), false)
+			}
+
+			// Because You Watched, genres, Collections, Watch Again: after Jellyfin's rows
+			val discover = discoverJob.await()
+			if (isActive) withContext(Dispatchers.Main) {
+				val at = (rowsAdapter.size() - extraRowsInAdapter(rowsAdapter, extraRows.size)).coerceAtLeast(topIndex)
+				var i = at
+				for (row in discover) if (row.addAt(requireContext(), cardPresenter, rowsAdapter, i)) i++
 			}
 		}
 
@@ -192,6 +209,10 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 		// Subscribe to Audio messages
 		mediaManager.addAudioEventListener(this)
 	}
+
+	/** Audio / Live TV rows sit at the very end; the discover rows go just before them. */
+	private fun extraRowsInAdapter(rowsAdapter: MutableObjectAdapter<Row>, count: Int): Int =
+		if (count == 0) 0 else count.coerceAtMost(rowsAdapter.size())
 
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 		super.onViewCreated(view, savedInstanceState)

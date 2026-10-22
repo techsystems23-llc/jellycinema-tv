@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
@@ -82,17 +83,18 @@ class HomeFragment : Fragment() {
 		val heroHeight by androidx.compose.animation.core.animateDpAsState(
 			when { theater -> 400.dp; rowsFocused -> 140.dp; else -> 222.dp }, tween(350), label = "hero-height")
 
-		// first focus: the banner's Play button once titles are in, else the rows
-		var focusedOnce by remember { mutableStateOf(false) }
+		// First focus: the remote works straight away (rows get focus at once); when the banner's titles
+		// arrive, Play takes over, unless the person has already started pressing buttons.
+		val openedAt = remember { System.currentTimeMillis() }
+		var playFocused by remember { mutableStateOf(false) }
+		LaunchedEffect(Unit) {
+			if (!heroState.slides.value.isNotEmpty()) runCatching { rowsFocusRequester.requestFocus() }
+		}
 		LaunchedEffect(showHero) {
-			if (focusedOnce) return@LaunchedEffect
-			if (showHero) {
-				delay(150)
-				runCatching { playFocusRequester.requestFocus() }.onSuccess { focusedOnce = true }
-			} else {
-				delay(4000)
-				if (!focusedOnce && !heroState.slides.value.isNotEmpty()) runCatching { rowsFocusRequester.requestFocus() }
-			}
+			if (!showHero || playFocused) return@LaunchedEffect
+			if (heroState.lastKey > openedAt && rowsFocused) return@LaunchedEffect
+			withFrameNanos { }
+			runCatching { playFocusRequester.requestFocus() }.onSuccess { playFocused = true }
 		}
 
 		// slideshow: next title every few seconds (waits while a trailer plays or a card is shown)
@@ -177,7 +179,7 @@ class HomeFragment : Fragment() {
 		heroState.homeVisible = true
 		// no leftover picture (e.g. the sign-in screen's) behind Home
 		backgroundService.clearBackgrounds()
-		heroState.onInput()
+		heroState.onInput(fromKey = false)
 	}
 
 	override fun onPause() {

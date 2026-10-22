@@ -405,7 +405,7 @@ class JellyCinemaRepository(private val api: ApiClient) {
 	// (the server's Home Screen Sections plugin is not needed).
 
 	/** Up to [count] "Because You Watched <title>" rows from the most recently finished movies and shows. */
-	suspend fun becauseYouWatched(count: Int = 2): List<Pair<String, List<BaseItemDto>>> = withContext(Dispatchers.IO) {
+	suspend fun becauseYouWatched(count: Int = 2): List<Pair<String, List<BaseItemDto>>> = withContext(Dispatchers.IO) { coroutineScope {
 		val recent = runCatching {
 			api.itemsApi.getItems(
 				includeItemTypes = setOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE), recursive = true,
@@ -417,21 +417,21 @@ class JellyCinemaRepository(private val api: ApiClient) {
 		val seeds = recent.mapNotNull { i ->
 			if (i.type == BaseItemKind.EPISODE) i.seriesId?.let { it to (i.seriesName ?: "") } else i.id to (i.name ?: "")
 		}.distinctBy { it.first }.take(count + 2)
-		val rows = ArrayList<Pair<String, List<BaseItemDto>>>()
-		for ((id, name) in seeds) {
-			if (rows.size >= count) break
-			val similar = runCatching {
-				api.libraryApi.getSimilarItems(
-					org.jellyfin.sdk.model.api.request.GetSimilarItemsRequest(itemId = id, fields = cardFields, limit = 20)
-				).content.items
-			}.getOrDefault(emptyList()).filter { it.userData?.played != true }
-			if (similar.size >= 4 && name.isNotBlank()) rows.add("Because You Watched $name" to similar)
-		}
-		rows
-	}
+		// all lookups at once (faster), then keep the first [count] that have enough titles
+		seeds.map { (id, name) ->
+			async {
+				val similar = runCatching {
+					api.libraryApi.getSimilarItems(
+						org.jellyfin.sdk.model.api.request.GetSimilarItemsRequest(itemId = id, fields = cardFields, limit = 20)
+					).content.items
+				}.getOrDefault(emptyList()).filter { it.userData?.played != true }
+				if (similar.size >= 4 && name.isNotBlank()) "Because You Watched $name" to similar else null
+			}
+		}.awaitAll().filterNotNull().take(count)
+	} }
 
 	/** Movie rows for the genres this person watches most, e.g. "Science Fiction Movies". */
-	suspend fun genreRows(count: Int = 4): List<Pair<String, List<BaseItemDto>>> = withContext(Dispatchers.IO) {
+	suspend fun genreRows(count: Int = 4): List<Pair<String, List<BaseItemDto>>> = withContext(Dispatchers.IO) { coroutineScope {
 		val played = runCatching {
 			api.itemsApi.getItems(
 				includeItemTypes = setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.EPISODE), recursive = true,
@@ -449,22 +449,22 @@ class JellyCinemaRepository(private val api: ApiClient) {
 			}.getOrDefault(emptyList()).mapNotNull { it.name }
 			genres = (genres + all.shuffled()).distinct()
 		}
-		val rows = ArrayList<Pair<String, List<BaseItemDto>>>()
-		for (g in genres) {
-			if (rows.size >= count) break
-			val list = runCatching {
-				api.itemsApi.getItems(
-					includeItemTypes = setOf(BaseItemKind.MOVIE), recursive = true, genres = listOf(g),
-					sortBy = listOf(ItemSortBy.RANDOM), limit = 24, imageTypes = listOf(ImageType.PRIMARY),
-					fields = cardFields, enableUserData = true,
-				).content.items
-			}.getOrDefault(emptyList())
-			// unwatched first
-			val sorted = list.sortedBy { if (it.userData?.played == true) 1 else 0 }
-			if (sorted.size >= 6) rows.add("$g Movies" to sorted)
-		}
-		rows
-	}
+		// a few more genres than needed, all at once; keep the first [count] (in order) with enough movies
+		genres.take(count + 3).map { g ->
+			async {
+				val list = runCatching {
+					api.itemsApi.getItems(
+						includeItemTypes = setOf(BaseItemKind.MOVIE), recursive = true, genres = listOf(g),
+						sortBy = listOf(ItemSortBy.RANDOM), limit = 24, imageTypes = listOf(ImageType.PRIMARY),
+						fields = cardFields, enableUserData = true,
+					).content.items
+				}.getOrDefault(emptyList())
+				// unwatched first
+				val sorted = list.sortedBy { if (it.userData?.played == true) 1 else 0 }
+				if (sorted.size >= 6) "$g Movies" to sorted else null
+			}
+		}.awaitAll().filterNotNull().take(count)
+	} }
 
 	/** The person's collections (box sets), only ones they may open. */
 	suspend fun collections(): List<BaseItemDto> = withContext(Dispatchers.IO) {

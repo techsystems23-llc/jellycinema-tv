@@ -67,8 +67,14 @@ class JellyCinemaHeroState {
 	}
 
 	/** Every key press. Returns true when it only woke Theater Mode (the key must then be ignored). */
-	fun onInput(): Boolean {
+	/** Last real remote key press (not just Home opening). */
+	@Volatile
+	var lastKey: Long = 0L
+		private set
+
+	fun onInput(fromKey: Boolean = true): Boolean {
 		lastInput = System.currentTimeMillis()
+		if (fromKey) lastKey = lastInput
 		if (_theater.value) {
 			_theater.value = false
 			return true
