@@ -187,7 +187,7 @@ class HomeFragment : Fragment() {
 			// seasonal falling leaves, bats, snow... over the whole screen
 			// Jelly Cinema logo, top right: under the clock, and up in the corner in full screen (Theater Mode)
 			if (showHero) {
-				val logoTop by androidx.compose.animation.core.animateDpAsState(if (theater) 31.dp else 80.dp, tween(900), label = "logo-top")
+				val logoTop by androidx.compose.animation.core.animateDpAsState(if (theater) 31.dp else 66.dp, tween(900), label = "logo-top")
 				androidx.compose.foundation.Image(
 					painter = androidx.compose.ui.res.painterResource(org.jellyfin.androidtv.R.drawable.app_logo),
 					contentDescription = null,
