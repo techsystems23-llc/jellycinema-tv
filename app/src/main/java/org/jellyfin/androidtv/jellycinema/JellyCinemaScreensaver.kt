@@ -79,6 +79,8 @@ fun JellyCinemaScreensaver(onEmpty: @Composable () -> Unit) {
 					.padding(bottom = 48.dp),
 			)
 		}
+		// the season's falling leaves and bats (snow at Christmas...) keep going in the screensaver
+		SeasonalEffects()
 		// small brand mark in the corner
 		Image(
 			painter = painterResource(R.drawable.app_logo),
