@@ -80,8 +80,11 @@ class HomeFragment : Fragment() {
 		val chromeAlpha by animateFloatAsState(if (theater) 0f else 1f, tween(900), label = "theater")
 		// while browsing the rows the banner shrinks so the rows and their titles have room
 		var rowsFocused by remember { mutableStateOf(false) }
+		// the banner only shrinks once the person is really browsing the rows (not the start-up focus)
+		val keys by heroState.keys.collectAsState()
+		val browsing = rowsFocused && keys > 0
 		val heroHeight by androidx.compose.animation.core.animateDpAsState(
-			when { theater -> 400.dp; rowsFocused -> 140.dp; else -> 222.dp }, tween(350), label = "hero-height")
+			when { theater -> 400.dp; browsing -> 140.dp; else -> 244.dp }, tween(350), label = "hero-height")
 
 		// First focus: the remote works straight away (rows get focus at once); when the banner's titles
 		// arrive, Play takes over, unless the person has already started pressing buttons.
@@ -92,9 +95,13 @@ class HomeFragment : Fragment() {
 		}
 		LaunchedEffect(showHero) {
 			if (!showHero || playFocused) return@LaunchedEffect
-			if (heroState.lastKey > openedAt && rowsFocused) return@LaunchedEffect
-			withFrameNanos { }
-			runCatching { playFocusRequester.requestFocus() }.onSuccess { playFocused = true }
+			// try for a moment while the banner lays out; stop if the person starts pressing buttons
+			repeat(20) {
+				if (heroState.lastKey > openedAt) return@LaunchedEffect
+				withFrameNanos { }
+				if (runCatching { playFocusRequester.requestFocus() }.isSuccess && !rowsFocused) { playFocused = true; return@LaunchedEffect }
+				delay(100)
+			}
 		}
 
 		// slideshow: next title every few seconds (waits while a trailer plays or a card is shown)
@@ -133,7 +140,7 @@ class HomeFragment : Fragment() {
 					state = heroState,
 					playFocusRequester = playFocusRequester,
 					modifier = Modifier.fillMaxWidth().height(heroHeight),
-					compact = rowsFocused,
+					compact = browsing,
 					onBannerFocused = {
 						heroState.selected.value = null
 						heroState.preview.value = null
@@ -152,8 +159,11 @@ class HomeFragment : Fragment() {
 						.focusRequester(rowsFocusRequester)
 						.focusProperties {
 							onExit = {
+								// moving focus from code (e.g. to the banner's Play button) is always allowed
 								val isFirstRowSelected = rowsSupportFragment?.selectedPosition?.let { it <= 0 } ?: false
-								if (requestedFocusDirection != FocusDirection.Up || !isFirstRowSelected) {
+								if (requestedFocusDirection == FocusDirection.Enter) {
+									// allowed
+								} else if (requestedFocusDirection != FocusDirection.Up || !isFirstRowSelected) {
 									cancelFocusChange()
 								} else {
 									rowsSupportFragment?.selectedPosition = 0

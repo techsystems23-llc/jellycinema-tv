@@ -67,6 +67,9 @@ class JellyCinemaHeroState {
 	}
 
 	/** Every key press. Returns true when it only woke Theater Mode (the key must then be ignored). */
+	/** Number of remote key presses (the banner stays full size until the first one). */
+	val keys = MutableStateFlow(0)
+
 	/** Last real remote key press (not just Home opening). */
 	@Volatile
 	var lastKey: Long = 0L
@@ -74,7 +77,7 @@ class JellyCinemaHeroState {
 
 	fun onInput(fromKey: Boolean = true): Boolean {
 		lastInput = System.currentTimeMillis()
-		if (fromKey) lastKey = lastInput
+		if (fromKey) { lastKey = lastInput; keys.value = keys.value + 1 }
 		if (_theater.value) {
 			_theater.value = false
 			return true
