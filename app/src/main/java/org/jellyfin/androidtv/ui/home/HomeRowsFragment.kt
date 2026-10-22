@@ -163,8 +163,16 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 				val keep = selectedPosition
 				var at = topIndex
 				for (row in top) if (row.addAt(requireContext(), cardPresenter, rowsAdapter, at)) at++
-				// don't let the new rows move the highlight if someone is already in the rows
-				if (keep > 0) setSelectedPosition(keep + (at - topIndex), false)
+				// Rows added above the current one make the list scroll down to keep the old row in place,
+				// which would hide Top 10 above the banner. Show the page from the top again unless the person
+				// is already browsing further down.
+				if (at > topIndex) {
+					if (keep > topIndex) setSelectedPosition(keep + (at - topIndex), false)
+					else {
+						setSelectedPosition(0, false)
+						verticalGridView?.scrollToPosition(0)
+					}
+				}
 			}
 
 			// Because You Watched, genres, Collections, Watch Again: after Jellyfin's rows
