@@ -1,36 +1,41 @@
 package org.jellyfin.androidtv.jellycinema
 
-import android.net.Uri
 import android.webkit.WebView
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jellyfin.androidtv.R
 import org.koin.compose.koinInject
 
@@ -41,19 +46,28 @@ object JellyCinemaIntroState {
 	@Volatile var showing = false
 }
 
+private const val INTRO_SECONDS = 3.4f
+
+private fun progress(t: Float, start: Float, end: Float) = ((t - start) / (end - start)).coerceIn(0f, 1f)
+private fun easeOut(x: Float) = 1f - (1f - x) * (1f - x) * (1f - x)
+private fun easeInOut(x: Float) = if (x < 0.5f) 4f * x * x * x else 1f - (-2f * x + 2f).let { it * it * it } / 2f
+private fun easeBack(x: Float): Float {
+	val c1 = 1.70158f; val c3 = c1 + 1f
+	return 1f + c3 * (x - 1f).let { it * it * it } + c1 * (x - 1f).let { it * it }
+}
+
 /**
- * Short Jelly Cinema intro (like Netflix's) shown over Home on the first start. Home, the banner
- * and the trailer player (WebView) load underneath while it plays, so the first screen the person
- * sees is ready to use instead of frozen for a few seconds.
- *
- * The video plays on a SurfaceView, which keeps animating even while the app is busy setting up.
+ * Short Jelly Cinema intro (like Netflix's) shown over Home on the first start: the popcorn pops in,
+ * slides aside and the name wipes in. Home, the banner and the trailer engine load underneath while
+ * it plays, so the first screen the person sees is ready to use instead of frozen for a few seconds.
+ * Drawn by the app itself (no video), so it looks the same on every TV.
  */
 @Composable
 fun JellyCinemaIntro() {
 	if (JellyCinemaIntroState.shown) return
 	val context = LocalContext.current
 	val heroState = koinInject<JellyCinemaHeroState>()
-	var videoDone by remember { mutableStateOf(false) }
+	val clock = remember { Animatable(0f) }
 	var dismiss by remember { mutableStateOf(false) }
 	var gone by remember { mutableStateOf(false) }
 	val alpha by animateFloatAsState(if (dismiss) 0f else 1f, tween(700), label = "intro-fade",
@@ -65,61 +79,89 @@ fun JellyCinemaIntro() {
 		onDispose { JellyCinemaIntroState.showing = false; JellyCinemaIntroState.shown = true }
 	}
 
-	val player = remember {
-		ExoPlayer.Builder(context).build().apply {
-			setMediaItem(MediaItem.fromUri(Uri.parse("android.resource://${context.packageName}/${R.raw.jc_intro}")))
-			volume = 0f
-			playWhenReady = true
-			addListener(object : Player.Listener {
-				override fun onPlaybackStateChanged(state: Int) {
-					if (state == Player.STATE_ENDED) videoDone = true
-				}
-				override fun onPlayerError(error: androidx.media3.common.PlaybackException) { videoDone = true }
-			})
-			prepare()
-		}
-	}
-	DisposableEffect(player) { onDispose { player.release() } }
-
-	// Warm up the web engine the trailers use (the first WebView takes a couple of seconds to load)
+	// Warm up the web engine the trailers use. Its first start took seconds and froze Home: load it on
+	// a background thread first, then make the first (now quick) WebView before the animation starts.
 	LaunchedEffect(Unit) {
-		delay(600)
+		val t = System.currentTimeMillis()
+		withContext(Dispatchers.IO) { runCatching { android.webkit.WebSettings.getDefaultUserAgent(context) } }
+		val t2 = System.currentTimeMillis()
 		runCatching { WebView(context).destroy() }
+		android.util.Log.i("JellyCinemaIntro", "web engine ${t2 - t} ms, first WebView ${System.currentTimeMillis() - t2} ms")
 	}
 
-	// Leave when the video has played and Home has its banner (or after a few seconds at most)
+	// Play the animation, then leave once Home has its banner (or after a few seconds at most)
 	LaunchedEffect(Unit) {
-		withTimeoutOrNull(9_000) {
-			while (!videoDone) delay(50)
-			withTimeoutOrNull(4_500) { heroState.slides.first { it.isNotEmpty() } }
-			delay(250)
-		}
-		videoDone = true
+		clock.animateTo(INTRO_SECONDS, tween((INTRO_SECONDS * 1000).toInt(), easing = LinearEasing))
+		withTimeoutOrNull(4_500) { heroState.slides.first { it.isNotEmpty() } }
+		delay(200)
 		dismiss = true
 	}
 
-	Box(Modifier.fillMaxSize().alpha(alpha).background(Color(0xFF101010))) {
-		// last frame stays up (and fades) after the video ends
-		Image(
-			painter = painterResource(R.drawable.jc_intro_last),
-			contentDescription = null,
-			contentScale = ContentScale.Crop,
-			modifier = Modifier.fillMaxSize(),
-		)
-		if (!videoDone) {
-			AndroidView(
-				modifier = Modifier.fillMaxSize(),
-				factory = { ctx ->
-					PlayerView(ctx).apply {
-						useController = false
-						isFocusable = false
-						resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-						setShutterBackgroundColor(android.graphics.Color.BLACK)
-						this.player = player
-					}
-				},
-				onRelease = { it.player = null },
+	BoxWithConstraints(Modifier.fillMaxSize().alpha(alpha).background(Color(0xFF101010))) {
+		val t = clock.value
+		val u = maxWidth / 1920f // layout is designed on a 1920-wide screen
+		val popW = u * 217f; val popH = u * 300f
+		val wordW = u * 1074f; val wordH = u * 170f
+		val total = 217f + 40f + 1074f
+		val popFinalX = (1920f - total) / 2f
+		val popCenterX = (1920f - 217f) / 2f
+
+		// red cinema glow: fades in, then settles to the page colour
+		val glowIn = easeOut(progress(t, 0f, 0.6f))
+		val glowOut = easeInOut(progress(t, 2.6f, 3.4f))
+		val glow = glowIn * (1f - 0.55f * glowOut)
+		Canvas(Modifier.fillMaxSize()) {
+			drawRect(
+				Brush.radialGradient(
+					0f to Color(0xFF5A1414).copy(alpha = glow), 0.45f to Color(0xFF2A0E0E).copy(alpha = glow * 0.8f), 1f to Color.Transparent,
+					center = Offset(size.width / 2f, size.height / 2f), radius = size.width * 0.55f,
+				)
 			)
 		}
+
+		// popcorn: pops in at the centre, then slides left to make room for the name
+		val pop = easeBack(progress(t, 0.15f, 0.9f))
+		val slide = easeInOut(progress(t, 0.95f, 1.55f))
+		val popX = popCenterX + (popFinalX - popCenterX) * slide
+		Image(
+			painter = painterResource(R.drawable.jc_intro_popcorn),
+			contentDescription = null,
+			modifier = Modifier
+				.size(popW, popH)
+				.graphicsLayer {
+					translationX = (u * popX).toPx()
+					translationY = ((maxHeight - popH) / 2f).toPx()
+					scaleX = pop; scaleY = pop
+					this.alpha = progress(t, 0.15f, 0.35f)
+				},
+		)
+
+		// name: wipes in from the left, then a light shimmer passes over it
+		val wipe = easeOut(progress(t, 1.15f, 1.85f))
+		val shimmer = progress(t, 1.9f, 2.6f)
+		Image(
+			painter = painterResource(R.drawable.jc_intro_word),
+			contentDescription = null,
+			modifier = Modifier
+				.size(wordW, wordH)
+				.graphicsLayer {
+					translationX = (u * (popFinalX + 217f + 40f)).toPx()
+					translationY = ((maxHeight - wordH) / 2f).toPx() + (u * 10f).toPx()
+					compositingStrategy = CompositingStrategy.Offscreen
+				}
+				.drawWithContent {
+					clipRect(right = size.width * wipe) { this@drawWithContent.drawContent() }
+					if (shimmer > 0f && shimmer < 1f) {
+						val x = -size.width * 0.3f + size.width * 1.6f * shimmer
+						drawRect(
+							Brush.linearGradient(
+								0f to Color.Transparent, 0.5f to Color.White.copy(alpha = 0.55f), 1f to Color.Transparent,
+								start = Offset(x - size.width * 0.15f, 0f), end = Offset(x + size.width * 0.15f, size.height),
+							),
+							blendMode = BlendMode.SrcAtop,
+						)
+					}
+				},
+		)
 	}
 }
