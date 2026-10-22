@@ -24,6 +24,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jellyfin.androidtv.auth.repository.UserRepository
 import org.jellyfin.androidtv.constant.CustomMessage
 import org.jellyfin.androidtv.constant.HomeSectionType
@@ -138,11 +139,17 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 			val cardPresenter = CardPresenter()
 			var topIndex = 0
 
+			// Top 10 / Halloween / Picks usually arrive within a second or so: give them a moment, so they can
+			// simply go first. If they take longer, Jellyfin's rows show first and they slot in above.
+			val earlyTop = withTimeoutOrNull(1_500) { topJob.await() }
+			var topAdded = false
+
 			// Add sections to layout
 			withContext(Dispatchers.Main) {
 				notificationsRow.addToRowsAdapter(requireContext(), cardPresenter, rowsAdapter)
 				nowPlaying.addToRowsAdapter(requireContext(), cardPresenter, rowsAdapter)
 				topIndex = rowsAdapter.size()
+				earlyTop?.let { list -> list.forEach { it.addToRowsAdapter(requireContext(), cardPresenter, rowsAdapter) }; topAdded = true }
 				for (row in rows) row.addToRowsAdapter(requireContext(), cardPresenter, rowsAdapter)
 				for (row in extraRows) row.addToRowsAdapter(requireContext(), cardPresenter, rowsAdapter)
 
@@ -157,9 +164,9 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 				}
 			}
 
-			// Top 10, Halloween, Picks: first on the page
-			val top = topJob.await()
-			if (isActive) withContext(Dispatchers.Main) {
+			// Top 10, Halloween, Picks: first on the page (if they weren't ready in time above)
+			val top = if (topAdded) emptyList() else topJob.await()
+			if (isActive && top.isNotEmpty()) withContext(Dispatchers.Main) {
 				val keep = selectedPosition
 				var at = topIndex
 				for (row in top) if (row.addAt(requireContext(), cardPresenter, rowsAdapter, at)) at++
@@ -169,8 +176,11 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 				if (at > topIndex) {
 					if (keep > topIndex) setSelectedPosition(keep + (at - topIndex), false)
 					else {
-						setSelectedPosition(0, false)
-						verticalGridView?.scrollToPosition(0)
+						// after the list has taken the new rows in (next layout pass), go back to the top
+						verticalGridView?.post {
+							setSelectedPosition(0, false)
+							verticalGridView?.scrollToPosition(0)
+						}
 					}
 				}
 			}
