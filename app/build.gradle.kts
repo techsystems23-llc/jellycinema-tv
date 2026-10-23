@@ -18,6 +18,11 @@ android {
 		applicationId = "app.jellycinema.tv"
 		versionName = (project.findProperty("jc.versionName") as String?) ?: "2.0.0"
 		versionCode = ((project.findProperty("jc.versionCode") as String?) ?: "100").toInt()
+		// Where sideloaded builds look for updates first (https only), e.g. the latest GitHub release:
+		// -Pjc.updateUrl=https://github.com/<owner>/<repo>/releases/latest/download/jellycinema-tv.json
+		// Empty = only the connected server's web/hub folder.
+		val updateUrl = (project.findProperty("jc.updateUrl") as String?).orEmpty().replace("\"", "")
+		buildConfigField("String", "UPDATE_URL", "\"$updateUrl\"")
 	}
 
 	buildFeatures {

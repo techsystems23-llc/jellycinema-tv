@@ -27,7 +27,7 @@ class UpdateReceiver : BroadcastReceiver() {
             else -> {
                 val msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
                 Timber.w("Jelly Cinema TV update failed: %d %s", status, msg)
-                Toast.makeText(context, "Jelly Cinema update didn't install: ${msg ?: status}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, context.getString(org.jellyfin.androidtv.R.string.jc_update_not_installed, msg ?: status.toString()), Toast.LENGTH_LONG).show()
             }
         }
     }

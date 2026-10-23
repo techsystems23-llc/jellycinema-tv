@@ -41,6 +41,7 @@ import org.jellyfin.androidtv.ui.navigation.NavigationRepository
 import org.jellyfin.androidtv.ui.playback.MediaManager
 import org.jellyfin.androidtv.ui.startup.fragment.SelectServerFragment
 import org.jellyfin.androidtv.ui.startup.fragment.ServerFragment
+import org.jellyfin.androidtv.ui.startup.fragment.ServerUnreachableFragment
 import org.jellyfin.androidtv.ui.startup.fragment.SplashFragment
 import org.jellyfin.androidtv.ui.startup.fragment.StartupToolbarFragment
 import org.jellyfin.androidtv.util.applyTheme
@@ -130,7 +131,8 @@ class StartupActivity : FragmentActivity() {
 				mediaManager.clearAudioQueue()
 
 				val server = startupViewModel.getLastServer()
-				if (server != null) showServer(server.id)
+				if (sessionRepository.unreachableServer.value != null) showServerUnreachable(server?.id)
+				else if (server != null) showServer(server.id)
 				else showServerSelection()
 			}
 		}.launchIn(lifecycleScope)
@@ -206,6 +208,15 @@ class StartupActivity : FragmentActivity() {
 				putString(ServerFragment.ARG_SERVER_ID, id.toString())
 			}
 		)
+	}
+
+	// Jelly Cinema: the server isn't answering, but the saved sign-in is fine (keeps retrying by itself)
+	private fun showServerUnreachable(serverId: UUID?) {
+		if (supportFragmentManager.findFragmentById(R.id.content_view) is ServerUnreachableFragment) return
+		val fragment = ServerUnreachableFragment().apply {
+			onChooseServer = { if (serverId != null) showServer(serverId) else showServerSelection() }
+		}
+		supportFragmentManager.commit { replace(R.id.content_view, fragment) }
 	}
 
 	private fun showServerSelection() = supportFragmentManager.commit {

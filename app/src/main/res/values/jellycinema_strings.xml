@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Jelly Cinema text. Translations go in values-<language>/jellycinema_strings.xml -->
+<resources>
+    <!-- Home rows -->
+    <string name="jc_row_top10_movies">Top 10 Movies This Week</string>
+    <string name="jc_row_top10_shows">Top 10 Shows This Week</string>
+    <string name="jc_row_picks">%1$s Picks</string>
+    <string name="jc_row_because_you_watched">Because You Watched %1$s</string>
+    <string name="jc_row_genre_movies">%1$s Movies</string>
+    <string name="jc_row_collections">Collections</string>
+    <string name="jc_row_watch_again">Watch Again</string>
+    <string name="jc_row_easter">Easter Movies</string>
+    <string name="jc_row_halloween">Halloween Movies</string>
+    <string name="jc_row_christmas">Christmas Movies</string>
+    <string name="jc_row_library_christmas">%1$s Christmas</string>
+
+    <!-- Banner -->
+    <string name="jc_banner_play">Play</string>
+    <string name="jc_banner_resume">Resume</string>
+    <string name="jc_banner_more_info">More info</string>
+    <string name="jc_banner_favorite">Favorite</string>
+    <string name="jc_banner_add_favorite">Add to favorites</string>
+    <string name="jc_top10_card">Number %1$d, %2$s</string>
+
+    <!-- Settings → Jelly Cinema -->
+    <string name="jc_settings_title">Jelly Cinema</string>
+    <string name="jc_settings_caption">Banner, trailers, Theater Mode, rows and seasonal effects</string>
+    <string name="jc_settings_description">Press an option to change it. Automatic uses your server\'s Jelly Cinema settings, or the app\'s own if the server doesn\'t have them. Changes show the next time Home opens.</string>
+    <string name="jc_setting_automatic">Automatic</string>
+    <string name="jc_setting_on">On</string>
+    <string name="jc_setting_off">Off</string>
+    <string name="jc_setting_seasonal_effects">Seasonal effects</string>
+    <string name="jc_setting_trailers">Banner trailers</string>
+    <string name="jc_setting_trailers_desc">Play titles\' trailers (muted) in the banner</string>
+    <string name="jc_setting_slide_seconds">Banner slide time</string>
+    <string name="jc_setting_slide_seconds_desc">How long each title stays without a trailer</string>
+    <string name="jc_setting_theater">Theater Mode</string>
+    <string name="jc_setting_theater_desc">Full-screen banner after this long without a key press</string>
+    <string name="jc_setting_top10">Top 10 rows</string>
+    <string name="jc_setting_top10_desc">Most watched movies and shows on this server</string>
+    <string name="jc_setting_picks">Picks row</string>
+    <string name="jc_setting_picks_desc">Well-rated family titles on the weekend</string>
+    <string name="jc_setting_seasonal_rows">Holiday rows</string>
+    <string name="jc_setting_seasonal_rows_desc">Halloween, Christmas and Easter movies in season</string>
+    <string name="jc_setting_holiday_library_rows">Holiday rows for holiday libraries</string>
+    <string name="jc_setting_holiday_library_rows_desc">Own row for a library when this share of it is holiday titles</string>
+    <string name="jc_setting_because_rows">Because You Watched rows</string>
+    <string name="jc_setting_because_rows_desc">How many rows, from what was watched last</string>
+    <string name="jc_setting_genre_rows">Genre rows</string>
+    <string name="jc_setting_genre_rows_desc">How many rows, from the genres watched most</string>
+    <string name="jc_setting_collections">Collections row</string>
+    <string name="jc_setting_collections_desc">Never shown to accounts with a rating limit</string>
+    <string name="jc_setting_watch_again">Watch Again row</string>
+    <string name="jc_setting_watch_again_desc">Movies and shows watched recently</string>
+    <string name="jc_setting_trailer_status">Last banner trailer</string>
+
+    <!-- Seasonal effects -->
+    <string name="jc_season_automatic">Automatic (today: %1$s)</string>
+    <string name="jc_season_preview">Preview: %1$s</string>
+    <string name="jc_season_newyear">New Year sparkles</string>
+    <string name="jc_season_winter">Winter snow</string>
+    <string name="jc_season_valentines">Valentine\'s hearts</string>
+    <string name="jc_season_stpatricks">St. Patrick\'s clovers</string>
+    <string name="jc_season_spring">Spring petals</string>
+    <string name="jc_season_easter">Easter eggs and petals</string>
+    <string name="jc_season_summer">Summer fireflies</string>
+    <string name="jc_season_july4">4th of July stars</string>
+    <string name="jc_season_fall">Fall leaves</string>
+    <string name="jc_season_halloween">Halloween leaves and bats</string>
+    <string name="jc_season_thanksgiving">Thanksgiving leaves</string>
+    <string name="jc_season_christmas">Christmas snow</string>
+    <string name="jc_season_none">None today</string>
+
+    <!-- Updates -->
+    <string name="jc_update_check">Check for updates</string>
+    <string name="jc_update_press_to_check">Version %1$s. Press to check for a newer version.</string>
+    <string name="jc_update_checking">Checking for updates…</string>
+    <string name="jc_update_up_to_date">You have the newest version (%1$s).</string>
+    <string name="jc_update_no_server">Sign in to a server first.</string>
+    <string name="jc_update_needs_permission">Allow Jelly Cinema to install apps, then press this again.</string>
+    <string name="jc_update_choose_update">Installing %1$s. Choose Update when the TV asks.</string>
+    <string name="jc_update_failed">Couldn\'t update: %1$s</string>
+    <string name="jc_update_try_again">Try again in a moment.</string>
+    <string name="jc_update_no_info">No update information found</string>
+    <string name="jc_update_unreadable">Update information is unreadable</string>
+    <string name="jc_update_bad_name">Update file name is not allowed</string>
+    <string name="jc_update_allow_install">Jelly Cinema %1$s is ready. Turn on \"Allow from this source\" for Jelly Cinema, then press Back and try again.</string>
+    <string name="jc_update_downloading">Downloading Jelly Cinema %1$s…</string>
+    <string name="jc_update_download_failed">Download didn\'t finish</string>
+    <string name="jc_update_damaged">Download was damaged, try again</string>
+    <string name="jc_update_installing">Updating Jelly Cinema to %1$s…</string>
+    <string name="jc_update_not_installed">Jelly Cinema update didn\'t install: %1$s</string>
+
+    <!-- Server not answering (start-up) -->
+    <string name="jc_unreachable_title">Can\'t reach %1$s</string>
+    <string name="jc_unreachable_your_server">your server</string>
+    <string name="jc_unreachable_text">The server isn\'t answering right now. It may be restarting or turned off. You\'re still signed in, so there\'s no need to enter your password.</string>
+    <string name="jc_unreachable_countdown">Trying again in %1$d s</string>
+    <string name="jc_unreachable_trying">Trying to connect…</string>
+    <string name="jc_unreachable_try_now">Try now</string>
+    <string name="jc_unreachable_choose_server">Choose user or server</string>
+
+    <!-- Crash reports -->
+    <string name="jc_crash_title">Jelly Cinema stopped</string>
+    <string name="jc_crash_text">Send a crash report to your Jellyfin server? It helps fix the problem. It holds technical details only, no passwords.</string>
+    <string name="jc_crash_send">Send report</string>
+    <string name="jc_crash_dont_send">Don\'t send</string>
+</resources>

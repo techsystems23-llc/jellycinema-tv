@@ -8,5 +8,6 @@ class JellyfinApplication : Application() {
 	override fun attachBaseContext(base: Context?) {
 		super.attachBaseContext(base)
 		TelemetryService.init(this)
+		org.jellyfin.androidtv.jellycinema.JellyCinemaSettings.init(this)
 	}
 }

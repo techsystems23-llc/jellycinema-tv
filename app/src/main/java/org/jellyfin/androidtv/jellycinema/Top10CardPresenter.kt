@@ -82,6 +82,9 @@ class Top10CardPresenter(private val ranks: Map<UUID, Int>) : Presenter() {
 		if (viewHolder !is Top10ViewHolder || item !is BaseRowItem) return
 		viewHolder.item.value = item
 		viewHolder.focused.value = viewHolder.view.isFocused
+		// read out by screen readers: "Number 3, Frozen"
+		val rank = item.baseItem?.id?.let { ranks[it] } ?: 0
+		viewHolder.view.contentDescription = viewHolder.view.context.getString(org.jellyfin.androidtv.R.string.jc_top10_card, rank, item.baseItem?.name ?: "")
 	}
 
 	override fun onUnbindViewHolder(viewHolder: ViewHolder) {

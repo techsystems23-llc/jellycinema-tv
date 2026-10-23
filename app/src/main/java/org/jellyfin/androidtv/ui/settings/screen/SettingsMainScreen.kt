@@ -89,29 +89,13 @@ fun SettingsMainScreen() {
 		}
 
 		item {
-			// Jelly Cinema: seasonal effects (automatic by date, off, or preview any season)
-			val context = LocalContext.current
-			var choice by remember { mutableStateOf(SeasonalPreference.get(context)) }
+			// Jelly Cinema: home screen options (banner, trailers, Theater Mode, rows, seasonal effects)
 			ListButton(
 				leadingContent = { Icon(painterResource(R.drawable.ic_photos), contentDescription = null) },
-				headingContent = { Text("Seasonal effects") },
-				captionContent = { Text(SeasonalPreference.label(choice) + "  \u2022  press to change") },
-				onClick = {
-					val list = SeasonalPreference.choices
-					choice = list[(list.indexOf(choice) + 1) % list.size]
-					SeasonalPreference.set(context, choice)
-				},
-			)
-		}
-
-		item {
-			// Jelly Cinema: what the banner trailer did last (helps when trailers don't show)
-			val status by JellyCinemaDiagnostics.trailer.collectAsState()
-			ListButton(
-				leadingContent = { Icon(painterResource(R.drawable.ic_info), contentDescription = null) },
-				headingContent = { Text("Banner trailers") },
-				captionContent = { Text(status) },
-				onClick = {},
+				headingContent = { Text(stringResource(R.string.jc_settings_title)) },
+				captionContent = { Text(stringResource(R.string.jc_settings_caption)) },
+				onClick = { router.push(Routes.JELLY_CINEMA) },
+				modifier = Modifier.focusKey(Routes.JELLY_CINEMA),
 			)
 		}
 
@@ -120,24 +104,24 @@ fun SettingsMainScreen() {
 			val context = LocalContext.current
 			val api = koinInject<ApiClient>()
 			val scope = rememberCoroutineScope()
-			var status by remember { mutableStateOf("Version ${BuildConfig.VERSION_NAME}. Press to check the server for a newer version.") }
+			var status by remember { mutableStateOf(context.getString(R.string.jc_update_press_to_check, BuildConfig.VERSION_NAME)) }
 			var busy by remember { mutableStateOf(false) }
 			ListButton(
 				leadingContent = { Icon(painterResource(R.drawable.ic_refresh), contentDescription = null) },
-				headingContent = { Text("Check for updates") },
+				headingContent = { Text(stringResource(R.string.jc_update_check)) },
 				captionContent = { Text(status) },
 				enabled = !busy,
 				onClick = {
 					busy = true
-					status = "Checking the server…"
+					status = context.getString(R.string.jc_update_checking)
 					scope.launch {
 						status = when (val r = UpdateChecker.check(context, api.baseUrl, force = true)) {
-							UpdateChecker.Result.UpToDate -> "You have the newest version (${BuildConfig.VERSION_NAME})."
-							UpdateChecker.Result.NoServer -> "Sign in to a server first."
-							UpdateChecker.Result.NeedsPermission -> "Allow Jelly Cinema to install apps, then press this again."
-							is UpdateChecker.Result.Installing -> "Installing ${r.versionName}. Choose Update when the TV asks."
-							is UpdateChecker.Result.Failed -> "Couldn't update: ${r.reason}"
-							UpdateChecker.Result.Skipped -> "Try again in a moment."
+							UpdateChecker.Result.UpToDate -> context.getString(R.string.jc_update_up_to_date, BuildConfig.VERSION_NAME)
+							UpdateChecker.Result.NoServer -> context.getString(R.string.jc_update_no_server)
+							UpdateChecker.Result.NeedsPermission -> context.getString(R.string.jc_update_needs_permission)
+							is UpdateChecker.Result.Installing -> context.getString(R.string.jc_update_choose_update, r.versionName)
+							is UpdateChecker.Result.Failed -> context.getString(R.string.jc_update_failed, r.reason)
+							UpdateChecker.Result.Skipped -> context.getString(R.string.jc_update_try_again)
 						}
 						busy = false
 					}

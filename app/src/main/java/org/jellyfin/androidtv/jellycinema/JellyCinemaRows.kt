@@ -50,28 +50,29 @@ suspend fun JellyCinemaRepository.loadTopRows(user: UserDto): List<JellyCinemaSt
 	}
 	val (movies, shows) = topJob.await()
 	buildList {
-		if (movies.size >= cfg.top10MinTitles) add(top10Row(cfg.top10MoviesTitle, movies))
-		if (shows.size >= cfg.top10MinTitles) add(top10Row(cfg.top10ShowsTitle, shows))
+		if (movies.size >= cfg.top10MinTitles) add(top10Row(JellyCinemaSettings.title(cfg.top10MoviesTitle, "Top 10 Movies This Week", org.jellyfin.androidtv.R.string.jc_row_top10_movies), movies))
+		if (shows.size >= cfg.top10MinTitles) add(top10Row(JellyCinemaSettings.title(cfg.top10ShowsTitle, "Top 10 Shows This Week", org.jellyfin.androidtv.R.string.jc_row_top10_shows), shows))
 		seasonalJob.await().forEach { (row, items) ->
 			add(JellyCinemaStaticRow(if (row.icon.isNotBlank()) "${row.icon}  ${row.title}" else row.title, items))
 		}
 		val picks = picksJob.await()
-		if (picks.isNotEmpty()) add(JellyCinemaStaticRow(cfg.picksTitle ?: "${cfg.brandName ?: "Jelly Cinema"} Picks", picks))
+		if (picks.isNotEmpty()) add(JellyCinemaStaticRow(cfg.picksTitle ?: JellyCinemaSettings.text(org.jellyfin.androidtv.R.string.jc_row_picks, cfg.brandName ?: "Jelly Cinema"), picks))
 	}
 }
 
 /** The rows after Recently Added: Because You Watched, genres, Collections, Watch Again. */
 suspend fun JellyCinemaRepository.loadDiscoverRows(user: UserDto): List<JellyCinemaStaticRow> = coroutineScope {
-	val becauseJob = async { withTimeoutOrNull(12_000) { becauseYouWatched() }.orEmpty() }
-	val genreJob = async { withTimeoutOrNull(12_000) { genreRows(5) }.orEmpty() }
+	val cfg = config
+	val becauseJob = async { if (cfg.becauseRowCount <= 0) emptyList() else withTimeoutOrNull(12_000) { becauseYouWatched(cfg.becauseRowCount) }.orEmpty() }
+	val genreJob = async { if (cfg.genreRowCount <= 0) emptyList() else withTimeoutOrNull(12_000) { genreRows(cfg.genreRowCount) }.orEmpty() }
 	// Collections: hidden for accounts with a rating limit (kids saw grown-up collection names on the web)
-	val collectionsJob = async { if (user.policy?.maxParentalRating != null) emptyList() else withTimeoutOrNull(12_000) { collections() }.orEmpty() }
-	val watchAgainJob = async { withTimeoutOrNull(12_000) { watchAgain() }.orEmpty() }
+	val collectionsJob = async { if (!cfg.collectionsEnabled || user.policy?.maxParentalRating != null) emptyList() else withTimeoutOrNull(12_000) { collections() }.orEmpty() }
+	val watchAgainJob = async { if (!cfg.watchAgainEnabled) emptyList() else withTimeoutOrNull(12_000) { watchAgain() }.orEmpty() }
 	buildList {
 		becauseJob.await().forEach { (t, items) -> add(JellyCinemaStaticRow(t, items)) }
 		genreJob.await().forEach { (t, items) -> add(JellyCinemaStaticRow(t, items)) }
-		collectionsJob.await().takeIf { it.size >= 3 }?.let { add(JellyCinemaStaticRow("Collections", it)) }
-		watchAgainJob.await().takeIf { it.size >= 3 }?.let { add(JellyCinemaStaticRow("Watch Again", it)) }
+		collectionsJob.await().takeIf { it.size >= 3 }?.let { add(JellyCinemaStaticRow(JellyCinemaSettings.text(org.jellyfin.androidtv.R.string.jc_row_collections), it)) }
+		watchAgainJob.await().takeIf { it.size >= 3 }?.let { add(JellyCinemaStaticRow(JellyCinemaSettings.text(org.jellyfin.androidtv.R.string.jc_row_watch_again), it)) }
 	}
 }
 

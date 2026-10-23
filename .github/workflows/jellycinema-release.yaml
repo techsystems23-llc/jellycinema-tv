@@ -1,0 +1,79 @@
+name: Jelly Cinema / Release
+
+# Push a tag like v2.3.0 to publish a signed release:
+#   git tag v2.3.0 && git push origin v2.3.0
+# The build and privacy check run first; nothing is published if they fail.
+#
+# Needs these repository secrets (Settings > Secrets and variables > Actions):
+#   JC_KEYSTORE_BASE64   the signing keystore, base64-encoded (base64 -w0 jellycinema-tv.jks)
+#   JC_KEYSTORE_PASSWORD the keystore password
+#   JC_KEY_ALIAS         the key alias
+#   JC_KEY_PASSWORD      the key password
+#
+# The release gets jellycinema-tv.apk (sideload build that updates itself from the newest release),
+# jellycinema-tv.json (the update information the app reads) and jellycinema-tv-play.aab (Google Play).
+# The repository must be public for TVs to download updates from it.
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  check:
+    uses: ./.github/workflows/jellycinema-ci.yaml
+
+  release:
+    name: Signed build and GitHub release
+    needs: check
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Java
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version-file: .tools-versions
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - name: Version from the tag (v2.3.0 -> 2.3.0, version code 20300)
+        run: |
+          NAME="${GITHUB_REF_NAME#v}"
+          IFS=. read -r MAJOR MINOR PATCH <<< "$NAME"
+          echo "JC_VERSION_NAME=$NAME" >> "$GITHUB_ENV"
+          echo "JC_VERSION_CODE=$(( MAJOR * 10000 + MINOR * 100 + ${PATCH:-0} ))" >> "$GITHUB_ENV"
+
+      - name: Signed builds
+        env:
+          JC_KEYSTORE_BASE64: ${{ secrets.JC_KEYSTORE_BASE64 }}
+          JC_KEYSTORE_PASSWORD: ${{ secrets.JC_KEYSTORE_PASSWORD }}
+          JC_KEY_ALIAS: ${{ secrets.JC_KEY_ALIAS }}
+          JC_KEY_PASSWORD: ${{ secrets.JC_KEY_PASSWORD }}
+        run: |
+          echo "$JC_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/jellycinema-tv.jks"
+          ./gradlew :app:assembleRelease :app:bundlePlay \
+            -Pjc.versionName="$JC_VERSION_NAME" -Pjc.versionCode="$JC_VERSION_CODE" \
+            -Pjc.updateUrl="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/jellycinema-tv.json" \
+            -Pkeystore.file="$RUNNER_TEMP/jellycinema-tv.jks" -Pkeystore.password="$JC_KEYSTORE_PASSWORD" \
+            -Psigning.key.alias="$JC_KEY_ALIAS" -Psigning.key.password="$JC_KEY_PASSWORD"
+          rm -f "$RUNNER_TEMP/jellycinema-tv.jks"
+
+      - name: Release files
+        run: |
+          mkdir -p out
+          cp app/build/outputs/apk/release/jellycinema-tv-release.apk out/jellycinema-tv.apk
+          cp app/build/outputs/bundle/play/*.aab out/jellycinema-tv-play.aab
+          MD5=$(md5sum out/jellycinema-tv.apk | cut -d' ' -f1)
+          printf '{"versionCode":%s,"versionName":"%s","apk":"jellycinema-tv.apk","md5":"%s"}\n' \
+            "$JC_VERSION_CODE" "$JC_VERSION_NAME" "$MD5" > out/jellycinema-tv.json
+          cat out/jellycinema-tv.json
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" out/* --title "Jelly Cinema TV $JC_VERSION_NAME" --generate-notes

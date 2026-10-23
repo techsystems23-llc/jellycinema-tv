@@ -17,6 +17,9 @@ Based on the official Jellyfin Android TV app (see `README.jellyfin.md`), licens
 - Changed Jellyfin files: `ui/home/HomeFragment.kt`, `ui/home/HomeRowsFragment.kt`,
   `ui/browsing/MainActivity.kt`, `ui/presentation/CardPresenter.kt`, `CustomListRowPresenter.kt`,
   `ui/settings/screen/SettingsMainScreen.kt`, `di/AppModule.kt`, branding resources.
+- Also: Settings → Jelly Cinema (`ui/settings/screen/SettingsJellyCinemaScreen.kt`, `jellycinema/JellyCinemaSettings.kt`),
+  the start-up intro (`jellycinema/JellyCinemaIntro.kt`), the "can't reach the server" screen
+  (`ui/startup/fragment/ServerUnreachableFragment.kt`) and crash reports that ask first (`telemetry/TelemetryService.kt`).
 
 ## Build
 
@@ -47,8 +50,52 @@ logo as the app's own icon or branding.
 
 ## Updates
 
-The app checks `<server>/web/hub/jellycinema-tv.json` (`{"versionCode":..,"versionName":..,"apk":"jellycinema-tv.zip","md5":..}`)
-on Home and from **Settings → Check for updates**, and installs the newer APK from the same folder.
+Sideloaded builds update themselves (the Play build is updated by the store). On Home and from
+**Settings → Check for updates** the app looks, in order, at:
+
+1. its own update address, built in with `-Pjc.updateUrl=https://…/jellycinema-tv.json`. Release builds made by
+   GitHub Actions point at the newest GitHub release:
+   `https://github.com/<owner>/<repo>/releases/latest/download/jellycinema-tv.json`. The repository has to be
+   public for TVs to download from it.
+2. the connected server's `<server>/web/hub/jellycinema-tv.json`, for server owners who host their own builds.
+
+The update information is `{"versionCode":..,"versionName":..,"apk":"jellycinema-tv.apk","md5":..}`; `apk` is a
+file next to the .json or a full `https://` address. The download is checked against the md5 before installing.
+
+## Releases (GitHub Actions)
+
+- **Every push / pull request** (`.github/workflows/jellycinema-ci.yaml`): unit tests, the privacy check (below)
+  and an unsigned build.
+- **A tag like `v2.3.0`** (`.github/workflows/jellycinema-release.yaml`): the same checks, then a signed sideload
+  APK, the `jellycinema-tv.json` update information and the Play bundle, published as a GitHub release.
+  Version code = major×10000 + minor×100 + patch (2.3.0 → 20300). Needs the repository secrets
+  `JC_KEYSTORE_BASE64`, `JC_KEYSTORE_PASSWORD`, `JC_KEY_ALIAS`, `JC_KEY_PASSWORD`; the key itself is never in the
+  repository.
+
+## Privacy check
+
+`app/src/test/kotlin/jellycinema/JellyCinemaPrivacyTest.kt` signs in to a throwaway Jellyfin server made by
+`ci/privacy/seed.py` (sample movies with ratings and holiday tags in three libraries, an account limited to PG and
+one limited to a single library, plus watch history so R-rated movies rank in the shared Top 10). It loads every
+Jelly Cinema row and the banner, on every holiday's dates, and fails if any title is one the account couldn't open,
+is above its rating limit or is outside its libraries. Run it locally:
+
+```bash
+python3 ci/privacy/seed.py http://localhost:8096 /tmp/jc-media          # on an empty test server
+JC_PRIVACY_ACCOUNTS=/tmp/jc-media/accounts.json ./gradlew :app:testDebugUnitTest
+```
+
+## Settings on the TV
+
+**Settings → Jelly Cinema**: banner trailers, slide time, Theater Mode delay, Top 10, Picks, holiday rows and the
+holiday-library rows (with the share of holiday titles that earns a library its own row), how many Because You
+Watched and genre rows, Collections and Watch Again, and the seasonal effects. Every option starts on
+*Automatic*: the server's Jelly Cinema plugin settings when it has the plugin, otherwise the app's defaults.
+
+## Languages
+
+All Jelly Cinema text is in `app/src/main/res/values/jellycinema_strings.xml`, with Spanish, French and German in
+`values-es`, `values-fr` and `values-de`. The app follows the TV's language.
 
 ## Trailers
 

@@ -63,9 +63,9 @@ data class JellyCinemaConfig(
 	val theaterIdleSeconds: Int = 90,
 	val top10Enabled: Boolean = true,
 	val top10Movies: Boolean = true,
-	val top10MoviesTitle: String = "Top 10 Movies This Week",
+	val top10MoviesTitle: String? = null,
 	val top10Shows: Boolean = true,
-	val top10ShowsTitle: String = "Top 10 Shows This Week",
+	val top10ShowsTitle: String? = null,
 	val top10MinTitles: Int = 3,
 	val top10FillFromLibrary: Boolean = true,
 	val top10RefreshDays: Int = 6,
@@ -78,6 +78,16 @@ data class JellyCinemaConfig(
 	val picksUnwatchedOnly: Boolean = true,
 	val seasonsEnabled: Boolean = true,
 	val seasonRows: List<SeasonRow> = SeasonRow.defaults,
+	/** Holiday-heavy libraries get their own holiday row (see [JellyCinemaRepository.seasonal]). */
+	val holidayLibraryRows: Boolean = true,
+	/** ...when at least this share of the library's titles are holiday titles... */
+	val holidayLibraryShare: Double = 0.2,
+	/** ...and it has at least this many of them. */
+	val holidayLibraryMin: Int = 8,
+	val becauseRowCount: Int = 2,
+	val genreRowCount: Int = 5,
+	val collectionsEnabled: Boolean = true,
+	val watchAgainEnabled: Boolean = true,
 	val continueWatchingHideAfterDays: Int = 90,
 )
 
@@ -95,6 +105,8 @@ data class SeasonRow(
 	val perLibrary: Boolean = false,
 	/** Word in a title that also counts for the per-library rows (titles without the tag, e.g. TV movies). */
 	val titleWord: String? = null,
+	/** Title of a per-library row, with the library name as %1$s. */
+	@androidx.annotation.StringRes val libraryTitle: Int = 0,
 ) {
 	fun isActive(today: LocalDate = LocalDate.now()): Boolean {
 		val md = MonthDay.from(today)
@@ -120,21 +132,18 @@ data class SeasonRow(
 		private val year get() = LocalDate.now().year
 		val defaults
 			get() = listOf(
-				SeasonRow("easter", "Easter Movies", "🐣", listOf("easter", "easter bunny", "easter egg", "jesus christ", "crucifixion of jesus"),
+				SeasonRow("easter", JellyCinemaSettings.text(org.jellyfin.androidtv.R.string.jc_row_easter), "🐣", listOf("easter", "easter bunny", "easter egg", "jesus christ", "crucifixion of jesus"),
 					MonthDay.from(easterSunday(year).minusDays(21)), MonthDay.from(easterSunday(year).plusDays(1))),
-				SeasonRow("halloween", "Halloween Movies", "🎃", listOf("halloween"), MonthDay.of(10, 1), MonthDay.of(10, 31)),
-				SeasonRow("christmas", "Christmas Movies", "🎄", listOf("christmas", "santa claus", "christmas eve", "christmas tree"),
-					thanksgiving(year), MonthDay.of(12, 26), perLibrary = true, titleWord = "Christmas"),
+				SeasonRow("halloween", JellyCinemaSettings.text(org.jellyfin.androidtv.R.string.jc_row_halloween), "🎃", listOf("halloween"), MonthDay.of(10, 1), MonthDay.of(10, 31)),
+				SeasonRow("christmas", JellyCinemaSettings.text(org.jellyfin.androidtv.R.string.jc_row_christmas), "🎄", listOf("christmas", "santa claus", "christmas eve", "christmas tree"),
+					thanksgiving(year), MonthDay.of(12, 26), perLibrary = true, titleWord = "Christmas",
+					libraryTitle = org.jellyfin.androidtv.R.string.jc_row_library_christmas),
 			)
 	}
 }
 
 class JellyCinemaRepository(private val api: ApiClient) {
 	companion object {
-		/** A library gets its own holiday row when at least this share of its titles are holiday titles... */
-		const val LIBRARY_ROW_SHARE = 0.2
-		/** ...and it has at least this many of them. */
-		const val LIBRARY_ROW_MIN = 8
 		val heroFields = setOf(
 			ItemFields.OVERVIEW, ItemFields.GENRES, ItemFields.TAGLINES, ItemFields.REMOTE_TRAILERS,
 			ItemFields.CHILD_COUNT, ItemFields.PRIMARY_IMAGE_ASPECT_RATIO, ItemFields.DATE_CREATED,
@@ -154,7 +163,8 @@ class JellyCinemaRepository(private val api: ApiClient) {
 
 	/** Loads the settings once every few minutes; returns the current ones otherwise. */
 	suspend fun ensureConfig(): JellyCinemaConfig {
-		if (System.currentTimeMillis() - configLoadedAt > 5 * 60_000L) {
+		if (JellyCinemaSettings.changed || System.currentTimeMillis() - configLoadedAt > 5 * 60_000L) {
+			JellyCinemaSettings.changed = false
 			loadConfig()
 			configLoadedAt = System.currentTimeMillis()
 		}
@@ -177,6 +187,7 @@ class JellyCinemaRepository(private val api: ApiClient) {
 			Timber.i("Jelly Cinema: no server settings (%s), using built-in defaults", e.message)
 			JellyCinemaConfig()
 		}
+		config = JellyCinemaSettings.applyTo(config)
 		config
 	}
 
@@ -361,7 +372,15 @@ class JellyCinemaRepository(private val api: ApiClient) {
 					api.itemsApi.getItems(ids = chunk, fields = cardFields, enableUserData = true).content.items
 				}.getOrDefault(emptyList()).associateBy { it.id }
 				val ordered = chunk.mapNotNull { found[it] }.filter { it.type == type }
-				out.addAll(verify(ordered))
+				// Jellyfin answers a look-up by id even for titles in libraries this person may not use (it only
+				// applies the rating limit). The ranking is shared by everyone, so check each title the way its
+				// details page would: only what this person can open stays. (Found by the privacy check.)
+				val allowed = coroutineScope {
+					ordered.map { item ->
+						async { item.takeIf { runCatching { api.userLibraryApi.getItem(itemId = item.id) }.isSuccess } }
+					}.awaitAll().filterNotNull()
+				}
+				out.addAll(allowed)
 			}
 			var list = out.take(10)
 			if (cfg.top10FillFromLibrary && list.size < 10) {
@@ -383,9 +402,9 @@ class JellyCinemaRepository(private val api: ApiClient) {
 	}
 
 	/** "<brand> Picks": well-rated family titles this person hasn't watched, on the chosen days. */
-	suspend fun picks(): List<BaseItemDto> = withContext(Dispatchers.IO) {
+	suspend fun picks(today: LocalDate = LocalDate.now()): List<BaseItemDto> = withContext(Dispatchers.IO) {
 		val cfg = config
-		val dow = LocalDate.now().dayOfWeek.value % 7   // 0 = Sunday, like the web scripts
+		val dow = today.dayOfWeek.value % 7   // 0 = Sunday, like the web scripts
 		if (!cfg.picksEnabled || dow !in cfg.picksDays) return@withContext emptyList()
 		val list = runCatching {
 			api.itemsApi.getItems(
@@ -399,10 +418,10 @@ class JellyCinemaRepository(private val api: ApiClient) {
 	}
 
 	/** The seasonal rows that are on today, each with titles this person may open. */
-	suspend fun seasonal(): List<Pair<SeasonRow, List<BaseItemDto>>> = withContext(Dispatchers.IO) {
+	suspend fun seasonal(today: LocalDate = LocalDate.now()): List<Pair<SeasonRow, List<BaseItemDto>>> = withContext(Dispatchers.IO) {
 		val cfg = config
 		if (!cfg.seasonsEnabled) return@withContext emptyList()
-		cfg.seasonRows.filter { it.isActive() }.mapNotNull { row ->
+		cfg.seasonRows.filter { it.isActive(today) }.mapNotNull { row ->
 			val parent = row.library?.let { libraryIds(listOf(it)).firstOrNull() ?: return@mapNotNull null }
 			val list = runCatching {
 				api.itemsApi.getItems(
@@ -413,17 +432,19 @@ class JellyCinemaRepository(private val api: ApiClient) {
 			}.getOrDefault(emptyList())
 			val ok = verify(list)
 			if (ok.size < 3) null else row to ok
-		}.flatMap { (row, items) -> listOf(row to items) + if (row.perLibrary) libraryHolidayRows(row) else emptyList() }
+		}.flatMap { (row, items) -> listOf(row to items) + if (row.perLibrary && cfg.holidayLibraryRows) libraryHolidayRows(row) else emptyList() }
 	}
 
 	/**
 	 * Extra holiday rows for libraries that are mostly holiday titles: a library where at least
-	 * [LIBRARY_ROW_SHARE] of the titles are tagged for the holiday (or have its word in the title) and that has
-	 * at least [LIBRARY_ROW_MIN] of them gets its own "<Library name> Christmas" row next to the main one.
+	 * [JellyCinemaConfig.holidayLibraryShare] of the titles are tagged for the holiday (or have its word in the
+	 * title) and that has at least [JellyCinemaConfig.holidayLibraryMin] of them gets its own "<Library name> Christmas" row next to the main one.
 	 * Nothing is named in the code: it works from each server's own libraries (a library full of
 	 * Christmas TV movies gets "<its name> Christmas"; an ordinary Movies library doesn't).
 	 */
 	private suspend fun libraryHolidayRows(row: SeasonRow): List<Pair<SeasonRow, List<BaseItemDto>>> = coroutineScope {
+		val minTitles = config.holidayLibraryMin
+		val share = config.holidayLibraryShare
 		val types = setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES)
 		val views = runCatching { api.userViewsApi.getUserViews().content.items }.getOrDefault(emptyList())
 			.filter { it.collectionType == null || it.collectionType in setOf(CollectionType.MOVIES, CollectionType.TVSHOWS, CollectionType.HOMEVIDEOS) }
@@ -432,7 +453,7 @@ class JellyCinemaRepository(private val api: ApiClient) {
 				runCatching {
 					val total = api.itemsApi.getItems(parentId = lib.id, includeItemTypes = types, recursive = true, limit = 0,
 						enableTotalRecordCount = true).content.totalRecordCount
-					if (total < LIBRARY_ROW_MIN) return@runCatching null
+					if (total < minTitles) return@runCatching null
 					val tagged = api.itemsApi.getItems(parentId = lib.id, includeItemTypes = types, recursive = true, tags = row.tags,
 						sortBy = listOf(ItemSortBy.RANDOM), limit = 40, imageTypes = listOf(ImageType.PRIMARY), fields = cardFields,
 						enableUserData = true, enableTotalRecordCount = true).content
@@ -442,10 +463,10 @@ class JellyCinemaRepository(private val api: ApiClient) {
 							enableUserData = true, enableTotalRecordCount = true).content
 					}
 					val matches = maxOf(tagged.totalRecordCount, named?.totalRecordCount ?: 0)
-					if (matches < LIBRARY_ROW_MIN || matches < total * LIBRARY_ROW_SHARE) return@runCatching null
+					if (matches < minTitles || matches < total * share) return@runCatching null
 					val items = (tagged.items + named?.items.orEmpty()).distinctBy { it.id }.shuffled().take(40)
 					val name = lib.name?.trim().orEmpty()
-					row.copy(key = "${row.key}-${lib.id}", title = "$name ${row.title.substringBefore(' ')}", icon = "❄️", library = name) to items
+					row.copy(key = "${row.key}-${lib.id}", title = JellyCinemaSettings.text(row.libraryTitle, name), icon = "❄️", library = name) to items
 				}.getOrNull()
 			}
 		}.awaitAll().filterNotNull()
@@ -476,7 +497,7 @@ class JellyCinemaRepository(private val api: ApiClient) {
 						org.jellyfin.sdk.model.api.request.GetSimilarItemsRequest(itemId = id, fields = cardFields, limit = 20)
 					).content.items
 				}.getOrDefault(emptyList()).filter { it.userData?.played != true }
-				if (similar.size >= 4 && name.isNotBlank()) "Because You Watched $name" to similar else null
+				if (similar.size >= 4 && name.isNotBlank()) JellyCinemaSettings.text(org.jellyfin.androidtv.R.string.jc_row_because_you_watched, name) to similar else null
 			}
 		}.awaitAll().filterNotNull().take(count)
 	} }
@@ -512,7 +533,7 @@ class JellyCinemaRepository(private val api: ApiClient) {
 				}.getOrDefault(emptyList())
 				// unwatched first
 				val sorted = list.sortedBy { if (it.userData?.played == true) 1 else 0 }
-				if (sorted.size >= 6) "$g Movies" to sorted else null
+				if (sorted.size >= 6) JellyCinemaSettings.text(org.jellyfin.androidtv.R.string.jc_row_genre_movies, g) to sorted else null
 			}
 		}.awaitAll().filterNotNull().take(count)
 	} }

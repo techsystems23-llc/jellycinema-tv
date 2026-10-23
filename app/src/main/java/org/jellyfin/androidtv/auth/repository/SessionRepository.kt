@@ -42,6 +42,9 @@ interface SessionRepository {
 	val currentSession: StateFlow<Session?>
 	val state: StateFlow<SessionRepositoryState>
 
+	/** Name of the server the saved sign-in belongs to, while that server isn't answering (null otherwise). */
+	val unreachableServer: StateFlow<String?>
+
 	suspend fun restoreSession(destroyOnly: Boolean)
 	suspend fun switchCurrentSession(serverId: UUID, userId: UUID): Boolean
 	fun destroyCurrentSession()
@@ -62,6 +65,8 @@ class SessionRepositoryImpl(
 	override val currentSession = _currentSession.asStateFlow()
 	private val _state = MutableStateFlow(SessionRepositoryState.READY)
 	override val state = _state.asStateFlow()
+	private val _unreachableServer = MutableStateFlow<String?>(null)
+	override val unreachableServer = _unreachableServer.asStateFlow()
 
 	override suspend fun restoreSession(destroyOnly: Boolean): Unit = withContext(NonCancellable) {
 		currentSessionMutex.withLock {
@@ -147,10 +152,19 @@ class SessionRepositoryImpl(
 				userRepository.setCurrentUser(user)
 				serverRepository.setCurrentServer(server)
 			} catch (err: ApiClientException) {
-				Timber.e(err, "Unable to authenticate: bad response when getting user info")
+				val status = (err as? org.jellyfin.sdk.api.client.exception.InvalidStatusException)?.status
+				if (status == 401 || status == 403) {
+					Timber.e(err, "Unable to authenticate: bad response when getting user info")
+				} else {
+					// The server isn't answering (down, restarting, network). The saved sign-in is still good:
+					// say so on the start screen and keep trying, instead of asking for a password.
+					Timber.w(err, "Server not reachable (status=%s)", status)
+					_unreachableServer.value = server?.name ?: ""
+				}
 				destroyCurrentSession()
 				return false
 			}
+			_unreachableServer.value = null
 
 			// Update crash reporting URL
 			val crashReportUrl = userApiClient.clientLogApi.logFileUrl()

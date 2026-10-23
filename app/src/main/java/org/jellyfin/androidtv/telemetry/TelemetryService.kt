@@ -5,7 +5,7 @@ import android.content.Context
 import org.acra.ACRA
 import org.acra.ReportField
 import org.acra.config.CoreConfiguration
-import org.acra.config.toast
+import org.acra.config.dialog
 import org.acra.data.CrashReportData
 import org.acra.ktx.initAcra
 import org.acra.plugins.Plugin
@@ -39,8 +39,14 @@ object TelemetryService {
 			pluginLoader = AcraPluginLoader(AcraReportSenderFactory::class.java)
 			applicationLogFileLines = 250
 
-			toast {
-				text = context.getString(R.string.crash_report_toast)
+			// Jelly Cinema: ask first ("Send a report?") instead of sending automatically. Reports go to the
+			// person's own Jellyfin server (Dashboard > Logs), never anywhere else.
+			dialog {
+				title = context.getString(R.string.jc_crash_title)
+				text = context.getString(R.string.jc_crash_text)
+				positiveButtonText = context.getString(R.string.jc_crash_send)
+				negativeButtonText = context.getString(R.string.jc_crash_dont_send)
+				resTheme = android.R.style.Theme_DeviceDefault_Dialog_Alert
 			}
 		}
 	}
@@ -69,7 +75,7 @@ object TelemetryService {
 			val connection = URL(url).openConnection() as HttpURLConnection
 			// Add authorization
 			val clientName = buildString {
-				append("Jellyfin for Android TV")
+				append("Jelly Cinema TV")
 				if (BuildConfig.DEBUG) append(" (debug)")
 			}
 			val authorization = AuthorizationHeaderBuilder.buildHeader(
@@ -97,9 +103,8 @@ object TelemetryService {
 		private fun CrashReportData.toReport(): String = buildMarkdown {
 			// Header
 			appendLine("---")
-			appendLine("client: Jellyfin for Android TV")
+			appendLine("client: Jelly Cinema TV (based on Jellyfin for Android TV)")
 			appendLine("client_version: ${BuildConfig.VERSION_NAME}")
-			appendLine("client_repository: https://github.com/jellyfin/jellyfin-androidtv")
 			appendLine("type: crash_report")
 			appendLine("format: markdown")
 			appendLine("---")

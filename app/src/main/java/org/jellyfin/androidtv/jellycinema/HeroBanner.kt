@@ -66,6 +66,11 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -331,7 +336,8 @@ private fun BoxScope.TrailerView(
 						// remember trailers YouTube will never play here (removed, embedding off, age-restricted = 151), so they aren't tried again
 						if (code in setOf("100", "101", "150", "151")) videoIds.getOrNull(which)?.let { TrailerMemory.markBad(context, it) }
 						which++
-						if (which < videoIds.size && which < 4) youTubePlayer.loadVideo(videoIds[which], 0f)
+						// try the title's other trailers (teasers and other cuts are often not age-restricted), up to 10
+						if (which < videoIds.size && which < 10) youTubePlayer.loadVideo(videoIds[which], 0f)
 						else { playing = false; onVisible(false); onPlaying(false) }
 					}
 					override fun onPlaybackQualityChange(youTubePlayer: YouTubePlayer, playbackQuality: PlayerConstants.PlaybackQuality) {
@@ -516,15 +522,15 @@ fun HeroInfo(
 			verticalAlignment = Alignment.CenterVertically,
 		) {
 			HeroButton(
-				label = if (resume) "Resume" else "Play", primary = true, icon = R.drawable.ic_play,
+				label = stringResource(if (resume) R.string.jc_banner_resume else R.string.jc_banner_play), primary = true, icon = R.drawable.ic_play,
 				modifier = Modifier.focusRequester(playFocusRequester)
 					.onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionLeft) { state.previous(); true } else false },
 			) { playback.retrieveAndPlay(item.id, false, context) }
-			HeroButton(label = "More info", icon = R.drawable.ic_info) {
+			HeroButton(label = stringResource(R.string.jc_banner_more_info), icon = R.drawable.ic_info) {
 				navigation.navigate(Destinations.itemDetails(if (item.type == BaseItemKind.EPISODE) item.id else item.id))
 			}
 			HeroButton(
-				label = if (isFavorite) "Favorite" else "Add to favorites", icon = R.drawable.ic_heart, active = isFavorite,
+				label = stringResource(if (isFavorite) R.string.jc_banner_favorite else R.string.jc_banner_add_favorite), icon = R.drawable.ic_heart, active = isFavorite,
 				modifier = Modifier.onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) { state.next(); true } else false },
 			) {
 				val want = !isFavorite
@@ -576,7 +582,9 @@ private fun HeroButton(
 			.clip(shape)
 			.background(bg)
 			.onFocusChanged { focused = it.isFocused }
-			.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+			// read out by screen readers as a button with its name ("More info", "Add to favorites"...)
+			.semantics(mergeDescendants = true) { contentDescription = label; role = Role.Button }
+			.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, role = Role.Button, onClickLabel = label, onClick = onClick)
 			.then(if (primary) Modifier.height(44.dp).padding(horizontal = 26.dp) else Modifier.size(44.dp)),
 		contentAlignment = Alignment.Center,
 	) {

@@ -30,16 +30,18 @@ object SeasonalPreference {
 	}
 
 	fun label(value: String): String = when (value) {
-		"" -> "Automatic (today: ${name(SeasonalTheme.current())})"
-		"off" -> "Off"
-		else -> "Preview: ${name(value)}"
+		"" -> JellyCinemaSettings.text(org.jellyfin.androidtv.R.string.jc_season_automatic, name(SeasonalTheme.current()))
+		"off" -> JellyCinemaSettings.text(org.jellyfin.androidtv.R.string.jc_setting_off)
+		else -> JellyCinemaSettings.text(org.jellyfin.androidtv.R.string.jc_season_preview, name(value))
 	}
 
-	fun name(theme: String) = when (theme) {
-		"newyear" -> "New Year sparkles"; "winter" -> "Winter snow"; "valentines" -> "Valentine's hearts"
-		"stpatricks" -> "St. Patrick's clovers"; "spring" -> "Spring petals"; "easter" -> "Easter eggs & petals"
-		"summer" -> "Summer fireflies"; "july4" -> "4th of July stars"; "fall" -> "Fall leaves"
-		"halloween" -> "Halloween leaves & bats"; "thanksgiving" -> "Thanksgiving leaves"; "christmas" -> "Christmas snow"
-		else -> "None today"
-	}
+	fun name(theme: String) = JellyCinemaSettings.text(when (theme) {
+		"newyear" -> org.jellyfin.androidtv.R.string.jc_season_newyear; "winter" -> org.jellyfin.androidtv.R.string.jc_season_winter
+		"valentines" -> org.jellyfin.androidtv.R.string.jc_season_valentines; "stpatricks" -> org.jellyfin.androidtv.R.string.jc_season_stpatricks
+		"spring" -> org.jellyfin.androidtv.R.string.jc_season_spring; "easter" -> org.jellyfin.androidtv.R.string.jc_season_easter
+		"summer" -> org.jellyfin.androidtv.R.string.jc_season_summer; "july4" -> org.jellyfin.androidtv.R.string.jc_season_july4
+		"fall" -> org.jellyfin.androidtv.R.string.jc_season_fall; "halloween" -> org.jellyfin.androidtv.R.string.jc_season_halloween
+		"thanksgiving" -> org.jellyfin.androidtv.R.string.jc_season_thanksgiving; "christmas" -> org.jellyfin.androidtv.R.string.jc_season_christmas
+		else -> org.jellyfin.androidtv.R.string.jc_season_none
+	})
 }

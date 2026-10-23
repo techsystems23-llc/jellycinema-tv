@@ -116,6 +116,7 @@ object Routes {
 	const val PLAYBACK_AVC_LEVEL = "/playback/codec/avc-level"
 	const val PLAYBACK_HEVC_LEVEL = "/playback/codec/hevc-level"
 	const val TELEMETRY = "/telemetry"
+	const val JELLY_CINEMA = "/jellycinema"
 	const val DEVELOPER = "/developer"
 	const val ABOUT = "/about"
 	const val LICENSES = "/licenses"
@@ -298,6 +299,9 @@ val routes = mapOf<String, RouteComposable>(
 	},
 	Routes.TELEMETRY to {
 		SettingsTelemetryScreen()
+	},
+	Routes.JELLY_CINEMA to {
+		org.jellyfin.androidtv.ui.settings.screen.SettingsJellyCinemaScreen()
 	},
 	Routes.DEVELOPER to {
 		SettingsDeveloperScreen()
