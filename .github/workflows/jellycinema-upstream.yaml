@@ -1,0 +1,67 @@
+name: Jelly Cinema / Jellyfin updates
+
+# Once a month (and on demand): bring in the Jellyfin Android TV app's latest changes, run the full check
+# (unit tests, privacy check, build) and open a pull request to review. If Jellyfin and Jelly Cinema
+# changed the same lines, an issue lists the files that need a hand merge instead.
+on:
+  schedule:
+    - cron: '17 9 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  sync:
+    name: Bring in Jellyfin's changes
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version-file: .tools-versions
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - name: Apply Jellyfin's changes
+        id: sync
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "jellyfin-updates-$(date +%Y-%m-%d)"
+          set +e; ci/upstream-sync.sh > sync.txt 2>&1; code=$?; set -e
+          cat sync.txt
+          echo "result=$code" >> "$GITHUB_OUTPUT"
+          [ $code -eq 0 ] || [ $code -eq 2 ] || [ $code -eq 3 ]
+
+      - name: Full check
+        if: steps.sync.outputs.result == '0'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
+          bash ci/check.sh
+
+      - name: Open a pull request
+        if: steps.sync.outputs.result == '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push origin HEAD
+          gh pr create --title "Jellyfin updates $(date +%Y-%m-%d)" \
+            --body "$(printf 'Jellyfin Android TV changes, applied by the monthly update workflow. Unit tests, the privacy check and the build passed.\n\n```\n%s\n```' "$(cat sync.txt)")"
+
+      - name: Ask for a hand merge
+        if: steps.sync.outputs.result == '3'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create --title "Jellyfin updates need a hand merge ($(date +%Y-%m-%d))" \
+            --body "$(printf 'Jellyfin and Jelly Cinema changed the same lines. Run `ci/upstream-sync.sh` locally and merge these files by hand:\n\n```\n%s\n```' "$(cat sync.txt)")"
