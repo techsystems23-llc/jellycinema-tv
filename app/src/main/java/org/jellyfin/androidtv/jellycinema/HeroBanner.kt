@@ -247,7 +247,8 @@ fun HeroBackdrop(state: JellyCinemaHeroState, modifier: Modifier = Modifier) {
 				// slow "Ken Burns" zoom while a title is shown
 				var zoomed by remember(item.id) { mutableStateOf(false) }
 				LaunchedEffect(item.id) { zoomed = true }
-				val zoom by animateFloatAsState(if (zoomed) 1.1f else 1.02f, tween(24_000, easing = LinearEasing), label = "ken-burns")
+				// (no slow zoom in the lighter mode for low-memory boxes)
+				val zoom by animateFloatAsState(if (zoomed && !repo.config.lightMode) 1.1f else 1.02f, tween(24_000, easing = LinearEasing), label = "ken-burns")
 				AsyncImage(
 					model = api.backdropUrl(item),
 					contentDescription = null,
@@ -348,7 +349,8 @@ private fun BoxScope.TrailerView(
 				// YouTube picks the picture quality from the player's size in web pixels. On a TV a full-screen
 				// banner is only 960 web pixels wide, so it chose 480p (pixelated). Draw the page at half scale:
 				// the player becomes 1920 web pixels wide and YouTube sends 1080p.
-				post { findWebView(this)?.let { wv -> wv.setInitialScale(50); wv.settings.useWideViewPort = false } }
+				// (not in the lighter mode for low-memory boxes: 720p is easier on them)
+				if (!repo.config.lightMode) post { findWebView(this)?.let { wv -> wv.setInitialScale(50); wv.settings.useWideViewPort = false } }
 			}
 		},
 		onRelease = { it.release(); onVisible(false); onPlaying(false) },

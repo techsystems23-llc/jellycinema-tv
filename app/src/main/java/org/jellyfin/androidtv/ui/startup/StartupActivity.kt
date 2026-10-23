@@ -42,12 +42,16 @@ import org.jellyfin.androidtv.ui.playback.MediaManager
 import org.jellyfin.androidtv.ui.startup.fragment.SelectServerFragment
 import org.jellyfin.androidtv.ui.startup.fragment.ServerFragment
 import org.jellyfin.androidtv.ui.startup.fragment.ServerUnreachableFragment
+import org.jellyfin.androidtv.ui.startup.fragment.ProfilePinFragment
+import org.jellyfin.androidtv.jellycinema.ProfileLock
 import org.jellyfin.androidtv.ui.startup.fragment.SplashFragment
 import org.jellyfin.androidtv.ui.startup.fragment.StartupToolbarFragment
 import org.jellyfin.androidtv.util.applyTheme
 import org.jellyfin.androidtv.util.createBundle
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
+import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -123,7 +127,10 @@ class StartupActivity : FragmentActivity() {
 				val currentUser = userRepository.currentUser.first { it != null }
 				Timber.i("CurrentUser changed to ${currentUser?.id} while waiting for startup.")
 
-				lifecycleScope.launch {
+				// Jelly Cinema: a profile with a PIN asks for it first
+				if (currentUser != null && ProfileLock.needsUnlock(this@StartupActivity, currentUser.id)) {
+					showProfilePin()
+				} else lifecycleScope.launch {
 					openNextActivity()
 				}
 			} else {
@@ -162,10 +169,22 @@ class StartupActivity : FragmentActivity() {
 
 		// Create destination
 		val destination = when {
-			// Search is requested
-			intent.action == Intent.ACTION_SEARCH -> Destinations.search(
-				query = intent.getStringExtra(SearchManager.QUERY)
-			)
+			// Search is requested (Google TV / voice: "find Frozen on Jelly Cinema"). Jelly Cinema: when exactly
+			// one movie or show has that name, open it straight away; otherwise show the search results.
+			intent.action == Intent.ACTION_SEARCH -> {
+				val query = intent.getStringExtra(SearchManager.QUERY)?.trim()
+				val exact = query?.takeIf { it.length >= 2 }?.let { q ->
+					runCatching {
+						withContext(Dispatchers.IO) {
+							api.itemsApi.getItems(
+								searchTerm = q, recursive = true, limit = 10,
+								includeItemTypes = setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+							).content.items
+						}
+					}.getOrNull()?.filter { it.name.equals(q, ignoreCase = true) }
+				}
+				if (exact?.size == 1) Destinations.itemDetails(exact.first().id) else Destinations.search(query = query)
+			}
 			// User view item is requested
 			itemId != null && itemIsUserView -> runCatching {
 				val item = withContext(Dispatchers.IO) {
@@ -208,6 +227,18 @@ class StartupActivity : FragmentActivity() {
 				putString(ServerFragment.ARG_SERVER_ID, id.toString())
 			}
 		)
+	}
+
+	// Jelly Cinema: profile PIN (Settings → Jelly Cinema → Profile PIN)
+	private fun showProfilePin() {
+		val fragment = ProfilePinFragment().apply {
+			onUnlocked = { lifecycleScope.launch { openNextActivity() } }
+			onOtherProfile = {
+				// back to the list of profiles on this server
+				sessionRepository.destroyCurrentSession()
+			}
+		}
+		supportFragmentManager.commit { replace(R.id.content_view, fragment) }
 	}
 
 	// Jelly Cinema: the server isn't answering, but the saved sign-in is fine (keeps retrying by itself)

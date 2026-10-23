@@ -1,1 +1,1 @@
-Television client for Jellyfin, the free software media system
+A movie-night home screen for your own Jellyfin server: trailers, Top 10, holidays

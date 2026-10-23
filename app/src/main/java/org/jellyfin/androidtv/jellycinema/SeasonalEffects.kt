@@ -240,6 +240,8 @@ fun SeasonalEffects(modifier: Modifier = Modifier) {
 	val theme = remember { SeasonalPreference.theme(context) }
 	val parts = remember(theme) { SeasonalTheme.parts(theme) }
 	if (parts.isEmpty()) return
+	// half as many in the lighter mode for low-memory boxes
+	val light = org.koin.compose.koinInject<JellyCinemaRepository>().config.lightMode
 	val particles = remember(theme) { ArrayList<P>() }
 	var frame by remember { mutableLongStateOf(0L) }
 	var size by remember { androidx.compose.runtime.mutableStateOf(Size.Zero) }
@@ -256,7 +258,7 @@ fun SeasonalEffects(modifier: Modifier = Modifier) {
 					if (particles.isEmpty()) {
 						// same density as the web version: one particle per 22,000 square web pixels, 18 to 90
 						val webArea = (w / unit) * (h / unit)
-						val base = (webArea / 22000f).roundToInt().coerceIn(18, 90)
+						val base = (webArea / 22000f).roundToInt().coerceIn(18, 90) / (if (light) 2 else 1)
 						for ((kind, share) in parts) repeat((base * share).roundToInt()) { particles.add(make(kind, w, h, unit, true)) }
 					}
 					for (i in particles.indices) {

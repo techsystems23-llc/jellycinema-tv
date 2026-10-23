@@ -136,7 +136,8 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 
 			@Suppress("UNCHECKED_CAST")
 			val rowsAdapter = adapter as MutableObjectAdapter<Row>
-			val cardPresenter = CardPresenter()
+			// Kids' Home: bigger posters
+			val cardPresenter = if (jellyCinema.config.kidsHome) CardPresenter(true, 150) else CardPresenter()
 			var topIndex = 0
 
 			// Top 10 / Halloween / Picks usually arrive within a second or so: give them a moment, so they can

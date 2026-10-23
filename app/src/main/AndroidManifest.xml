@@ -100,6 +100,15 @@
             android:exported="true"
             android:initOrder="10" />
 
+        <!-- Jelly Cinema: crash report question that works with the remote (see TelemetryService) -->
+        <activity
+            android:name=".telemetry.JellyCinemaCrashDialog"
+            android:excludeFromRecents="true"
+            android:finishOnTaskLaunch="true"
+            android:launchMode="singleInstance"
+            android:process=":acra"
+            android:theme="@android:style/Theme.Dialog" />
+
         <!-- Authentication -->
         <activity
             android:name=".ui.startup.StartupActivity"

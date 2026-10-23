@@ -47,6 +47,7 @@ object TelemetryService {
 				positiveButtonText = context.getString(R.string.jc_crash_send)
 				negativeButtonText = context.getString(R.string.jc_crash_dont_send)
 				resTheme = android.R.style.Theme_DeviceDefault_Dialog_Alert
+				reportDialogClass = JellyCinemaCrashDialog::class.java
 			}
 		}
 	}

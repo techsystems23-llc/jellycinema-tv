@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Amazon Appstore build (Fire TV): like the Play build, the store installs updates, so drop the
+     install-apps permission and the self-update receiver from this build only. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+    <application>
+        <receiver android:name="org.jellyfin.androidtv.jellycinema.UpdateReceiver" tools:node="remove" />
+    </application>
+</manifest>

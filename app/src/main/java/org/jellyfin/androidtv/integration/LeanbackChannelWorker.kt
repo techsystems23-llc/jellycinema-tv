@@ -47,6 +47,7 @@ import org.jellyfin.sdk.api.client.exception.TimeoutException
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
+import org.jellyfin.sdk.api.client.extensions.userApi
 import org.jellyfin.sdk.api.client.extensions.userViewsApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -97,6 +98,7 @@ class LeanbackChannelWorker(
 	private val userPreferences by inject<UserPreferences>()
 	private val userViewsRepository by inject<UserViewsRepository>()
 	private val imageHelper by inject<ImageHelper>()
+	private val jellyCinema by inject<org.jellyfin.androidtv.jellycinema.JellyCinemaRepository>()
 
 	/**
 	 * Update all channels for the currently authenticated user.
@@ -157,6 +159,27 @@ class LeanbackChannelWorker(
 					.setAppLinkIntent(Intent(context, StartupActivity::class.java))
 					.build()
 			)
+			// Jelly Cinema rows on the Google TV home screen too: Top 10 and the holiday row in season
+			val jcTop10 = runCatching {
+				jellyCinema.ensureConfig()
+				val me = api.userApi.getCurrentUser().content
+				jellyCinema.top10(me.id).first
+			}.getOrDefault(emptyList())
+			val jcHoliday = runCatching { jellyCinema.seasonal().firstOrNull() }.getOrNull()
+			val top10Channel = getChannelUri(
+				"jc_top10", Channel.Builder()
+					.setType(TvContractCompat.Channels.TYPE_PREVIEW)
+					.setDisplayName(context.getString(R.string.jc_row_top10_movies))
+					.setAppLinkIntent(Intent(context, StartupActivity::class.java))
+					.build()
+			)
+			val holidayChannel = getChannelUri(
+				"jc_holiday", Channel.Builder()
+					.setType(TvContractCompat.Channels.TYPE_PREVIEW)
+					.setDisplayName(jcHoliday?.first?.title ?: context.getString(R.string.jc_row_christmas))
+					.setAppLinkIntent(Intent(context, StartupActivity::class.java))
+					.build()
+			)
 			val preferParentThumb = userPreferences[UserPreferences.seriesThumbnailsEnabled]
 
 			// Add new items
@@ -166,6 +189,8 @@ class LeanbackChannelWorker(
 				latestMovies to latestMoviesChannel,
 				latestEpisodes to latestEpisodesChannel,
 				myMedia to myMediaChannel,
+				jcTop10 to top10Channel,
+				jcHoliday?.second.orEmpty().take(20) to holidayChannel,
 			).forEach { (items, channel) ->
 				if (channel == null) {
 					Timber.e("Skipping channel because it was not available")

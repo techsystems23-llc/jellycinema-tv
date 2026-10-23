@@ -89,6 +89,10 @@ data class JellyCinemaConfig(
 	val collectionsEnabled: Boolean = true,
 	val watchAgainEnabled: Boolean = true,
 	val continueWatchingHideAfterDays: Int = 90,
+	/** Kids' Home: bigger posters and no trailers (accounts with a rating limit, or set in Settings). */
+	val kidsHome: Boolean = false,
+	/** Lighter effects for low-memory TV boxes (no picture zoom, fewer falling leaves, 720p trailers). */
+	val lightMode: Boolean = false,
 )
 
 /** A seasonal row: titles with any of [tags] between [from] and [to] (month-day, inclusive). */
@@ -162,8 +166,13 @@ class JellyCinemaRepository(private val api: ApiClient) {
 	private var configLoadedAt = 0L
 
 	/** Loads the settings once every few minutes; returns the current ones otherwise. */
+	@Volatile
+	private var configToken: String? = null
+
 	suspend fun ensureConfig(): JellyCinemaConfig {
-		if (JellyCinemaSettings.changed || System.currentTimeMillis() - configLoadedAt > 5 * 60_000L) {
+		// reload when the settings changed, every few minutes, and when someone else signs in (Kids' Home)
+		if (JellyCinemaSettings.changed || api.accessToken != configToken || System.currentTimeMillis() - configLoadedAt > 5 * 60_000L) {
+			configToken = api.accessToken
 			JellyCinemaSettings.changed = false
 			loadConfig()
 			configLoadedAt = System.currentTimeMillis()
@@ -188,6 +197,9 @@ class JellyCinemaRepository(private val api: ApiClient) {
 			JellyCinemaConfig()
 		}
 		config = JellyCinemaSettings.applyTo(config)
+		// Kids' Home: automatic for accounts with a rating limit
+		val limited = runCatching { api.userApi.getCurrentUser().content.policy?.maxParentalRating != null }.getOrDefault(false)
+		config = JellyCinemaSettings.applyHomeStyle(config, limited)
 		config
 	}
 

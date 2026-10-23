@@ -36,14 +36,28 @@ fun SettingsAboutScreen(launchedFromLogin: Boolean = false) {
 		}
 
 		item {
-			val heading = "Jellyfin app version"
-			val caption = "jellyfin-androidtv ${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}"
+			val heading = stringResource(R.string.jc_about_version)
+			val caption = "Jelly Cinema TV ${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}"
 			ListButton(
 				leadingContent = { Icon(painterResource(R.drawable.ic_jellyfin), contentDescription = null) },
 				headingContent = { Text(heading) },
 				captionContent = { Text(caption) },
 				onClick = copyAction(ClipData.newPlainText(heading, caption)),
 				modifier = Modifier.focusKey("version")
+			)
+		}
+
+		item {
+			// Jelly Cinema: the app is GPL-2.0 (based on the Jellyfin Android TV app); everyone who has it may get its source code
+			val heading = stringResource(R.string.jc_about_source)
+			val caption = BuildConfig.SOURCE_URL.ifBlank { stringResource(R.string.jc_about_source_ask) } +
+				"\n" + stringResource(R.string.jc_about_licence)
+			ListButton(
+				leadingContent = { Icon(painterResource(R.drawable.ic_info), contentDescription = null) },
+				headingContent = { Text(heading) },
+				captionContent = { Text(caption) },
+				onClick = copyAction(ClipData.newPlainText(heading, BuildConfig.SOURCE_URL)),
+				modifier = Modifier.focusKey("source_code")
 			)
 		}
 

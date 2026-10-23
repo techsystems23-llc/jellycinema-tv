@@ -32,7 +32,9 @@ import java.security.MessageDigest
  *       <server>/web/hub/jellycinema-tv.json
  *       <server>/web/hub/jellycinema-tv.zip   (the APK, renamed: Jellyfin doesn't serve .apk files)
  *
- * The update information: {"versionCode":2,"versionName":"1.0.1","apk":"jellycinema-tv.zip","md5":"..."}.
+ * The update information: {"versionCode":2,"versionName":"1.0.1","apk":"jellycinema-tv.zip","md5":"...",
+ *   "abis":{"arm64-v8a":{"apk":"jellycinema-tv-arm64-v8a.zip","md5":"..."}, ...}}  ("abis" is optional: smaller APKs
+ *   made for one processor type; the TV takes the one for its processor, else the universal "apk").
  * "apk" is a file next to the .json, or a full https:// address. Checked when the app starts (at most every
  * 10 minutes) and from Settings. Nothing found = nothing happens.
  */
@@ -79,8 +81,13 @@ object UpdateChecker {
             val info = Json.parseToJsonElement(json).jsonObject
             val versionCode = info["versionCode"]?.jsonPrimitive?.int ?: return Result.Failed(app.getString(R.string.jc_update_unreadable))
             val versionName = info["versionName"]?.jsonPrimitive?.content ?: versionCode.toString()
-            val apk = info["apk"]?.jsonPrimitive?.content ?: "jellycinema-tv.zip"
-            val md5 = info["md5"]?.jsonPrimitive?.content
+            // a smaller APK made for this TV's processor, when the update information lists them
+            // ("abis": {"arm64-v8a": {"apk": "...", "md5": "..."}, ...}); otherwise the universal one
+            val abiInfo = (info["abis"] as? kotlinx.serialization.json.JsonObject)?.let { abis ->
+                Build.SUPPORTED_ABIS.firstNotNullOfOrNull { abi -> abis[abi] as? kotlinx.serialization.json.JsonObject }
+            }
+            val apk = abiInfo?.get("apk")?.jsonPrimitive?.content ?: info["apk"]?.jsonPrimitive?.content ?: "jellycinema-tv.zip"
+            val md5 = abiInfo?.get("md5")?.jsonPrimitive?.content ?: info["md5"]?.jsonPrimitive?.content
             if (versionCode <= BuildConfig.VERSION_CODE) return Result.UpToDate
             // a file next to the update information, or a full https:// address (e.g. a GitHub release asset)
             val apkUrl = when {

@@ -23,6 +23,9 @@ android {
 		// Empty = only the connected server's web/hub folder.
 		val updateUrl = (project.findProperty("jc.updateUrl") as String?).orEmpty().replace("\"", "")
 		buildConfigField("String", "UPDATE_URL", "\"$updateUrl\"")
+		// Where the app's source code can be downloaded (shown in Settings > About; GPL-2.0)
+		val sourceUrl = (project.findProperty("jc.sourceUrl") as String?).orEmpty().replace("\"", "")
+		buildConfigField("String", "SOURCE_URL", "\"$sourceUrl\"")
 	}
 
 	buildFeatures {
@@ -57,6 +60,22 @@ android {
 		includeInApk = false
 	}
 
+	// Smaller downloads: one APK per processor type (TVs are almost all ARM), plus a universal APK for
+	// anything else. 32-bit Intel (x86) is left out: no TV uses it. Play bundles split by themselves.
+	splits {
+		abi {
+			isEnable = true
+			reset()
+			include("arm64-v8a", "armeabi-v7a", "x86_64")
+			isUniversalApk = true
+		}
+	}
+	packaging {
+		jniLibs {
+			excludes += "lib/x86/**"
+		}
+	}
+
 	buildTypes {
 		release {
 			isMinifyEnabled = true
@@ -82,6 +101,14 @@ android {
 		// because Play doesn't allow apps to update themselves outside the store.
 		// Build with ./gradlew :app:bundlePlay
 		create("play") {
+			initWith(getByName("release"))
+			matchingFallbacks += listOf("release")
+			buildConfigField("boolean", "SELF_UPDATE", "false")
+		}
+
+		// Amazon Appstore build (Fire TV): same rules as Play, updates come from the Appstore.
+		// Build with ./gradlew :app:assembleAmazon
+		create("amazon") {
 			initWith(getByName("release"))
 			matchingFallbacks += listOf("release")
 			buildConfigField("boolean", "SELF_UPDATE", "false")

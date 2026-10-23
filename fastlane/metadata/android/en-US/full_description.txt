@@ -1,14 +1,20 @@
-Your media, on your terms.
+Jelly Cinema turns your own Jellyfin server into a living-room cinema.
 
-The Jellyfin project is an open source, free software media server. No fees, no tracking, no hidden agenda. Get our free server to collect all your audio, video, photos, and more in one place.
+• A big banner with each title's logo, rating and story, and its trailer playing quietly behind it
+• Theater Mode: leave the remote alone and the banner fills the screen
+• Top 10 Movies and Shows This Week, ranked from what your household actually watches
+• Holiday rows that appear by themselves: Halloween, Christmas, Easter, plus falling leaves, snow and more
+• Because You Watched, genre rows, Collections and Watch Again, made from your own viewing
+• Weekend Picks: well-rated family titles nobody has watched yet
+• Kids' Home for accounts with a rating limit: bigger posters, no trailers, nothing above the limit
+• Profile PINs, so kids can't switch to a parent's profile
+• Settings for everything, right on the TV
 
-To use the app, you must have a Jellyfin server set up and running. Find out more at <a href="https://jellyfin.org/" target="_blank">jellyfin.org</a>.
+Your server, your rules: every row only shows what the signed-in person is allowed to watch, checked by an
+automatic privacy test on every version. No ads, no tracking, no account with us.
 
-With a Jellyfin server, you can:
+Requires a Jellyfin server (free, https://jellyfin.org) with your own media. Works with or without the
+Jelly Cinema plugin for Jellyfin.
 
-* Watch Live TV and recorded shows from your Jellyfin server (additional hardware/services required)
-* Stream to a Chromecast device on your network
-* Stream your media to your Android device
-* View your collection in an easy to use interface
-
-This is the official Jellyfin companion app for Android TV. Thank you for using Jellyfin!
+Jelly Cinema TV is free software under the GPL-2.0 licence, based on the Jellyfin Android TV app. It is not
+made or endorsed by the Jellyfin project. Source code: see Settings → About in the app.

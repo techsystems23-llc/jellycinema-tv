@@ -33,13 +33,36 @@ keep `jellycinema-tv.jks` and its password safe — every update must be signed 
   -Psigning.key.alias=jellycinema -Psigning.key.password=...
 ```
 
-Output: `app/build/outputs/apk/release/jellycinema-tv-release.apk` (application id `app.jellycinema.tv`).
+Output in `app/build/outputs/apk/release/`: `jellycinema-tv-universal-release.apk` (every device) plus smaller
+`jellycinema-tv-<abi>-release.apk` files for `arm64-v8a`, `armeabi-v7a` (almost every TV) and `x86_64`.
+Application id `app.jellycinema.tv`. `./gradlew :app:assembleAmazon` makes the Amazon Appstore (Fire TV)
+build, which, like the Play build, leaves updating to the store.
 
 ## Google Play build
 
 Play doesn't allow apps to update themselves outside the store. `./gradlew :app:bundlePlay` (same signing
 properties as above) makes a Play build with self-update turned off and without the install-apps
 permission. `assembleRelease` stays the sideload build that updates itself from the server.
+
+## Keeping up with Jellyfin
+
+Jelly Cinema is built on the Jellyfin Android TV app, which gets fixes every few weeks. `UPSTREAM_BASE` holds
+the Jellyfin commit the code currently matches. Once a month (and on demand from the Actions tab) the
+**Jellyfin updates** workflow runs `ci/upstream-sync.sh`, which applies Jellyfin's changes since then, runs the
+full check (`ci/check.sh`: unit tests, privacy check, build) and opens a pull request to review and merge. If
+Jellyfin and Jelly Cinema changed the same lines, it opens an issue listing the files to merge by hand
+instead. Run `ci/upstream-sync.sh` locally to do the same by hand.
+
+## Devices
+
+See `docs/DEVICE-TESTING.md` for the devices to test on and what to check before a release. On TV boxes
+with little memory the app tones its effects down by itself (Settings → Jelly Cinema → Effects).
+
+## Store listing
+
+`fastlane/metadata/android/en-US/` holds the store title, descriptions, icon, feature graphic and TV banner.
+`PRIVACY.md` is the privacy policy (Google Play needs a web address for it: publish it, e.g. as a GitHub
+page). Store screenshots still need making, from a demo library without copyrighted movie art.
 
 ## Licence
 
@@ -87,7 +110,8 @@ JC_PRIVACY_ACCOUNTS=/tmp/jc-media/accounts.json ./gradlew :app:testDebugUnitTest
 
 ## Settings on the TV
 
-**Settings → Jelly Cinema**: banner trailers, slide time, Theater Mode delay, Top 10, Picks, holiday rows and the
+**Settings → Jelly Cinema**: profile PIN, Kids' Home, effects (full / light), banner trailers, slide time,
+Theater Mode delay, Top 10, Picks, holiday rows and the
 holiday-library rows (with the share of holiday titles that earns a library its own row), how many Because You
 Watched and genre rows, Collections and Watch Again, and the seasonal effects. Every option starts on
 *Automatic*: the server's Jelly Cinema plugin settings when it has the plugin, otherwise the app's defaults.
@@ -96,6 +120,20 @@ Watched and genre rows, Collections and Watch Again, and the seasonal effects. E
 
 All Jelly Cinema text is in `app/src/main/res/values/jellycinema_strings.xml`, with Spanish, French and German in
 `values-es`, `values-fr` and `values-de`. The app follows the TV's language.
+
+## Profiles and kids
+
+- **Profile PIN**: any profile can get a 4-digit PIN on this TV. It's asked when the app starts on that profile
+  and when someone switches to it; the profile's Jellyfin password removes a forgotten PIN.
+- **Kids' Home**: automatic for accounts with a rating limit: bigger posters and no trailers (Settings can
+  turn it on or off for anyone).
+
+## Google TV home screen and voice
+
+The app fills the Google TV / Android TV home screen's Continue watching, and offers rows there (Next up,
+latest movies and episodes, Top 10 Movies This Week and the holiday row in season), which people can add
+with the home screen's Customize channels. "Hey Google, find Frozen on Jelly Cinema" opens Frozen directly
+when exactly one title has that name, otherwise the search results.
 
 ## Trailers
 

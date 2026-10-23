@@ -37,6 +37,9 @@ object JellyCinemaSettings {
 			auto() + (0..8).map { Choice("$it", text = "$it") }),
 		COLLECTIONS("collections", R.string.jc_setting_collections, R.string.jc_setting_collections_desc, onOff()),
 		WATCH_AGAIN("watch_again", R.string.jc_setting_watch_again, R.string.jc_setting_watch_again_desc, onOff()),
+		KIDS_HOME("kids_home", R.string.jc_setting_kids_home, R.string.jc_setting_kids_home_desc, onOff()),
+		PERFORMANCE("performance", R.string.jc_setting_performance, R.string.jc_setting_performance_desc,
+			auto() + listOf(Choice("full", R.string.jc_setting_performance_full), Choice("light", R.string.jc_setting_performance_light))),
 	}
 
 	private fun auto() = listOf(Choice("", R.string.jc_setting_automatic))
@@ -73,6 +76,22 @@ object JellyCinemaSettings {
 	fun next(option: Option, value: String): String {
 		val i = option.choices.indexOfFirst { it.value == value }
 		return option.choices[(i + 1).mod(option.choices.size)].value
+	}
+
+	/** A TV box with little memory (most cheap streaming sticks): effects are toned down automatically. */
+	fun lowEndDevice(context: Context? = appContext): Boolean {
+		val am = context?.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager ?: return false
+		val info = android.app.ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }
+		return am.isLowRamDevice || info.totalMem in 1 until 2_600L * 1024 * 1024
+	}
+
+	/** Kids' Home (automatic for accounts with a rating limit) and the lighter mode for low-memory boxes. */
+	fun applyHomeStyle(cfg: JellyCinemaConfig, ratingLimited: Boolean): JellyCinemaConfig {
+		val kids = when (get(Option.KIDS_HOME)) { "on" -> true; "off" -> false; else -> ratingLimited }
+		val light = when (get(Option.PERFORMANCE)) { "light" -> true; "full" -> false; else -> lowEndDevice() }
+		// kids: no trailers unless banner trailers were turned on by hand
+		val trailers = if (kids && get(Option.TRAILERS) != "on") false else cfg.heroTrailers
+		return cfg.copy(kidsHome = kids, lightMode = light, heroTrailers = trailers)
 	}
 
 	/** The server's / built-in settings with this TV's own choices on top. */
