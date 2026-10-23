@@ -25,6 +25,7 @@ import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.api.client.extensions.userViewsApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.CollectionType
 import org.jellyfin.sdk.model.api.DisplayPreferencesDto
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.ItemFields
@@ -90,6 +91,10 @@ data class SeasonRow(
 	val to: MonthDay,
 	val library: String? = null,
 	val nameContains: String? = null,
+	/** Also give each holiday-heavy library its own row ("<Library> Christmas"), see [JellyCinemaRepository.seasonal]. */
+	val perLibrary: Boolean = false,
+	/** Word in a title that also counts for the per-library rows (titles without the tag, e.g. TV movies). */
+	val titleWord: String? = null,
 ) {
 	fun isActive(today: LocalDate = LocalDate.now()): Boolean {
 		val md = MonthDay.from(today)
@@ -119,13 +124,17 @@ data class SeasonRow(
 					MonthDay.from(easterSunday(year).minusDays(21)), MonthDay.from(easterSunday(year).plusDays(1))),
 				SeasonRow("halloween", "Halloween Movies", "🎃", listOf("halloween"), MonthDay.of(10, 1), MonthDay.of(10, 31)),
 				SeasonRow("christmas", "Christmas Movies", "🎄", listOf("christmas", "santa claus", "christmas eve", "christmas tree"),
-					thanksgiving(year), MonthDay.of(12, 26)),
+					thanksgiving(year), MonthDay.of(12, 26), perLibrary = true, titleWord = "Christmas"),
 			)
 	}
 }
 
 class JellyCinemaRepository(private val api: ApiClient) {
 	companion object {
+		/** A library gets its own holiday row when at least this share of its titles are holiday titles... */
+		const val LIBRARY_ROW_SHARE = 0.2
+		/** ...and it has at least this many of them. */
+		const val LIBRARY_ROW_MIN = 8
 		val heroFields = setOf(
 			ItemFields.OVERVIEW, ItemFields.GENRES, ItemFields.TAGLINES, ItemFields.REMOTE_TRAILERS,
 			ItemFields.CHILD_COUNT, ItemFields.PRIMARY_IMAGE_ASPECT_RATIO, ItemFields.DATE_CREATED,
@@ -404,7 +413,42 @@ class JellyCinemaRepository(private val api: ApiClient) {
 			}.getOrDefault(emptyList())
 			val ok = verify(list)
 			if (ok.size < 3) null else row to ok
-		}
+		}.flatMap { (row, items) -> listOf(row to items) + if (row.perLibrary) libraryHolidayRows(row) else emptyList() }
+	}
+
+	/**
+	 * Extra holiday rows for libraries that are mostly holiday titles: a library where at least
+	 * [LIBRARY_ROW_SHARE] of the titles are tagged for the holiday (or have its word in the title) and that has
+	 * at least [LIBRARY_ROW_MIN] of them gets its own "<Library name> Christmas" row next to the main one.
+	 * Nothing is named in the code: it works from each server's own libraries (a library full of
+	 * Christmas TV movies gets "<its name> Christmas"; an ordinary Movies library doesn't).
+	 */
+	private suspend fun libraryHolidayRows(row: SeasonRow): List<Pair<SeasonRow, List<BaseItemDto>>> = coroutineScope {
+		val types = setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES)
+		val views = runCatching { api.userViewsApi.getUserViews().content.items }.getOrDefault(emptyList())
+			.filter { it.collectionType == null || it.collectionType in setOf(CollectionType.MOVIES, CollectionType.TVSHOWS, CollectionType.HOMEVIDEOS) }
+		views.map { lib ->
+			async {
+				runCatching {
+					val total = api.itemsApi.getItems(parentId = lib.id, includeItemTypes = types, recursive = true, limit = 0,
+						enableTotalRecordCount = true).content.totalRecordCount
+					if (total < LIBRARY_ROW_MIN) return@runCatching null
+					val tagged = api.itemsApi.getItems(parentId = lib.id, includeItemTypes = types, recursive = true, tags = row.tags,
+						sortBy = listOf(ItemSortBy.RANDOM), limit = 40, imageTypes = listOf(ImageType.PRIMARY), fields = cardFields,
+						enableUserData = true, enableTotalRecordCount = true).content
+					val named = row.titleWord?.let {
+						api.itemsApi.getItems(parentId = lib.id, includeItemTypes = types, recursive = true, searchTerm = it,
+							sortBy = listOf(ItemSortBy.RANDOM), limit = 40, imageTypes = listOf(ImageType.PRIMARY), fields = cardFields,
+							enableUserData = true, enableTotalRecordCount = true).content
+					}
+					val matches = maxOf(tagged.totalRecordCount, named?.totalRecordCount ?: 0)
+					if (matches < LIBRARY_ROW_MIN || matches < total * LIBRARY_ROW_SHARE) return@runCatching null
+					val items = (tagged.items + named?.items.orEmpty()).distinctBy { it.id }.shuffled().take(40)
+					val name = lib.name?.trim().orEmpty()
+					row.copy(key = "${row.key}-${lib.id}", title = "$name ${row.title.substringBefore(' ')}", icon = "❄️", library = name) to items
+				}.getOrNull()
+			}
+		}.awaitAll().filterNotNull()
 	}
 
 	// ---------------------------------------------------------------------------------------------
