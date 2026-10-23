@@ -16,6 +16,8 @@
         <shape android:shape="rectangle">
             <corners android:radius="?attr/buttonRounding" />
             <solid android:color="?attr/buttonDefaultHighlightBackground" />
+            <!-- Jelly Cinema: red outline on the highlighted button -->
+            <stroke android:width="3dp" android:color="#E0262B" />
         </shape>
     </item>
 </selector>
