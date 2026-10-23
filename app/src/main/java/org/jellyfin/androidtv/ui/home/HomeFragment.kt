@@ -236,6 +236,8 @@ class HomeFragment : Fragment() {
 			if (cfg.heroEnabled && heroState.slides.value.isEmpty()) {
 				val items = runCatching { jellyCinema.heroItems() }.onFailure { Timber.w(it, "Banner titles failed") }.getOrDefault(emptyList())
 				org.jellyfin.androidtv.jellycinema.TrailerMemory.load(requireContext())
+				// the banner appears once the start-up intro has played (drawing it then doesn't make the intro stutter)
+				org.jellyfin.androidtv.jellycinema.JellyCinemaIntroState.awaitAnimation()
 				heroState.setSlides(org.jellyfin.androidtv.jellycinema.TrailerMemory.playableFirst(items))
 			}
 			// after the start-up intro, so it doesn't compete with it

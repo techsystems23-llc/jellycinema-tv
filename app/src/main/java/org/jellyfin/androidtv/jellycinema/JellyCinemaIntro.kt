@@ -44,6 +44,18 @@ object JellyCinemaIntroState {
 	@Volatile var shown = false
 	/** True while the intro covers the screen (remote keys are ignored). */
 	@Volatile var showing = false
+
+	/** The animation has played (or there is none). Home builds its rows only after this, so the animation never stutters. */
+	val animationDone = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+	/** Home has put its rows on screen. */
+	val homeRowsShown = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+	/** Waits (at most a few seconds) until the intro animation has played. */
+	suspend fun awaitAnimation() {
+		if (shown) return
+		withTimeoutOrNull(7_000) { animationDone.first { it } }
+	}
 }
 
 private const val INTRO_SECONDS = 3.4f   // timeline the steps are written in
@@ -65,7 +77,7 @@ private fun easeBack(x: Float): Float {
  */
 @Composable
 fun JellyCinemaIntro() {
-	if (JellyCinemaIntroState.shown) return
+	if (JellyCinemaIntroState.shown) { JellyCinemaIntroState.animationDone.value = true; return }
 	val context = LocalContext.current
 	val heroState = koinInject<JellyCinemaHeroState>()
 	val clock = remember { Animatable(0f) }
@@ -77,7 +89,7 @@ fun JellyCinemaIntro() {
 
 	DisposableEffect(Unit) {
 		JellyCinemaIntroState.showing = true
-		onDispose { JellyCinemaIntroState.showing = false; JellyCinemaIntroState.shown = true }
+		onDispose { JellyCinemaIntroState.showing = false; JellyCinemaIntroState.shown = true; JellyCinemaIntroState.animationDone.value = true }
 	}
 
 	// Warm up the web engine the trailers use. Its first start took seconds and froze Home: load it on
@@ -90,11 +102,16 @@ fun JellyCinemaIntro() {
 		android.util.Log.i("JellyCinemaIntro", "web engine ${t2 - t} ms, first WebView ${System.currentTimeMillis() - t2} ms")
 	}
 
-	// Play the animation, then leave once Home has its banner (or after a few seconds at most)
+	// Play the animation (nothing heavy runs meanwhile), then Home builds its rows behind the finished,
+	// still logo, and the intro leaves once Home has its banner and rows (or after a few seconds at most)
 	LaunchedEffect(Unit) {
 		clock.animateTo(INTRO_SECONDS, tween(INTRO_PLAY_MS, easing = LinearEasing))
-		withTimeoutOrNull(4_500) { heroState.slides.first { it.isNotEmpty() } }
-		delay(200)
+		JellyCinemaIntroState.animationDone.value = true
+		withTimeoutOrNull(5_000) {
+			heroState.slides.first { it.isNotEmpty() }
+			JellyCinemaIntroState.homeRowsShown.first { it }
+		}
+		delay(400) // let the first cards draw before fading out
 		dismiss = true
 	}
 

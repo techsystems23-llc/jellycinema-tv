@@ -144,6 +144,9 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 			val earlyTop = withTimeoutOrNull(1_500) { topJob.await() }
 			var topAdded = false
 
+			// The start-up intro plays first; building the rows is heavy and would make it stutter
+			org.jellyfin.androidtv.jellycinema.JellyCinemaIntroState.awaitAnimation()
+
 			// Add sections to layout
 			withContext(Dispatchers.Main) {
 				notificationsRow.addToRowsAdapter(requireContext(), cardPresenter, rowsAdapter)
@@ -162,6 +165,8 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 						if (previousRow != null) itemAdapter.setSiblingRow(previousRow)
 					}
 				}
+				verticalGridView?.post { org.jellyfin.androidtv.jellycinema.JellyCinemaIntroState.homeRowsShown.value = true }
+					?: run { org.jellyfin.androidtv.jellycinema.JellyCinemaIntroState.homeRowsShown.value = true }
 			}
 
 			// Top 10, Halloween, Picks: first on the page (if they weren't ready in time above)
