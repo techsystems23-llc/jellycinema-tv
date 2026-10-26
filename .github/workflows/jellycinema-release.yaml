@@ -56,13 +56,16 @@ jobs:
           JC_KEY_PASSWORD: ${{ secrets.JC_KEY_PASSWORD }}
         run: |
           echo "$JC_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/jellycinema-tv.jks"
-          ./gradlew :app:assembleRelease :app:bundlePlay \
+          # two runs: the Play bundle can't be built together with the per-processor APKs
+          for task in :app:assembleRelease :app:bundlePlay; do
+          ./gradlew "$task" \
             -Pjc.versionName="$JC_VERSION_NAME" -Pjc.versionCode="$JC_VERSION_CODE" \
             -Pjc.updateUrl="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/jellycinema-tv.json" \
             -Pjc.sourceUrl="https://github.com/${GITHUB_REPOSITORY}" \
             -Pjc.supportUrl="${{ vars.JC_SUPPORT_URL }}" \
             -Pkeystore.file="$RUNNER_TEMP/jellycinema-tv.jks" -Pkeystore.password="$JC_KEYSTORE_PASSWORD" \
             -Psigning.key.alias="$JC_KEY_ALIAS" -Psigning.key.password="$JC_KEY_PASSWORD"
+          done
           rm -f "$RUNNER_TEMP/jellycinema-tv.jks"
 
       - name: Release files

@@ -15,7 +15,7 @@ android {
 
 		// Release version
 		// Jelly Cinema TV: replaces the earlier web-page version of the app (same id and signing key)
-		applicationId = "app.jellycinema.tv"
+		applicationId = "com.techsystems23.jellycinema"
 		versionName = (project.findProperty("jc.versionName") as String?) ?: "2.0.0"
 		versionCode = ((project.findProperty("jc.versionCode") as String?) ?: "100").toInt()
 		// Where sideloaded builds look for updates first (https only), e.g. the latest GitHub release:
@@ -70,7 +70,8 @@ android {
 	// anything else. 32-bit Intel (x86) is left out: no TV uses it. Play bundles split by themselves.
 	splits {
 		abi {
-			isEnable = true
+			// per-processor APKs for sideloading; off when building a Play bundle (Play splits bundles itself)
+			isEnable = gradle.startParameter.taskNames.none { it.contains("bundle", ignoreCase = true) }
 			reset()
 			include("arm64-v8a", "armeabi-v7a", "x86_64")
 			isUniversalApk = true
@@ -89,9 +90,9 @@ android {
 			proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
 
 			// Set package names used in various XML files
-			resValue("string", "app_id", "app.jellycinema.tv")
-			resValue("string", "app_search_suggest_authority", "app.jellycinema.tv.content")
-			resValue("string", "app_search_suggest_intent_data", "content://app.jellycinema.tv.content/intent")
+			resValue("string", "app_id", "com.techsystems23.jellycinema")
+			resValue("string", "app_search_suggest_authority", "com.techsystems23.jellycinema.content")
+			resValue("string", "app_search_suggest_intent_data", "content://com.techsystems23.jellycinema.content/intent")
 
 			// Set flavored application name
 			resValue("string", "app_name", "@string/app_name_release")
@@ -127,9 +128,9 @@ android {
 			applicationIdSuffix = ".debug"
 
 			// Set package names used in various XML files
-			resValue("string", "app_id", "app.jellycinema.tv" + applicationIdSuffix)
-			resValue("string", "app_search_suggest_authority", "app.jellycinema.tv${applicationIdSuffix}.content")
-			resValue("string", "app_search_suggest_intent_data", "content://app.jellycinema.tv${applicationIdSuffix}.content/intent")
+			resValue("string", "app_id", "com.techsystems23.jellycinema" + applicationIdSuffix)
+			resValue("string", "app_search_suggest_authority", "com.techsystems23.jellycinema${applicationIdSuffix}.content")
+			resValue("string", "app_search_suggest_intent_data", "content://com.techsystems23.jellycinema${applicationIdSuffix}.content/intent")
 
 			// Set flavored application name
 			resValue("string", "app_name", "@string/app_name_debug")
@@ -244,4 +245,11 @@ dependencies {
 	testImplementation(libs.kotest.runner.junit5)
 	testImplementation(libs.kotest.assertions)
 	testImplementation(libs.mockk)
+}
+
+// Licence screen (Settings → About → Licenses): also list the fonts and artwork that aren't Gradle libraries
+aboutLibraries {
+	collect {
+		configPath = file("config")
+	}
 }

@@ -30,7 +30,7 @@ Effects: Automatic), and you can force either mode there to compare.
 7. **Server off.** Stop Jellyfin and open the app: the "Can't reach…" screen shows and retries; start
    Jellyfin again and the app continues on its own.
 8. **Memory.** After 30 minutes on Home with Theater Mode and trailers, the app is still smooth. On a
-   computer with adb: `adb shell dumpsys meminfo app.jellycinema.tv` (watch "TOTAL PSS").
+   computer with adb: `adb shell dumpsys meminfo com.techsystems23.jellycinema` (watch "TOTAL PSS").
 
 ## Fire TV notes
 

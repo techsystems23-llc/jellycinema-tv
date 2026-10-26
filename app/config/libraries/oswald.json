@@ -1,0 +1,15 @@
+{
+ "uniqueId": "jellycinema:oswald",
+ "artifactVersion": "",
+ "name": "Oswald font",
+ "description": "The JELLY CINEMA lettering in the logo, banner and intro",
+ "website": "https://github.com/googlefonts/OswaldFont",
+ "developers": [
+  {
+   "name": "The Oswald Project Authors"
+  }
+ ],
+ "licenses": [
+  "jc-oswald-ofl"
+ ]
+}

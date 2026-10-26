@@ -35,7 +35,7 @@ keep `jellycinema-tv.jks` and its password safe — every update must be signed 
 
 Output in `app/build/outputs/apk/release/`: `jellycinema-tv-universal-release.apk` (every device) plus smaller
 `jellycinema-tv-<abi>-release.apk` files for `arm64-v8a`, `armeabi-v7a` (almost every TV) and `x86_64`.
-Application id `app.jellycinema.tv`. `./gradlew :app:assembleAmazon` makes the Amazon Appstore (Fire TV)
+Application id `com.techsystems23.jellycinema`. `./gradlew :app:assembleAmazon` makes the Amazon Appstore (Fire TV)
 build, which, like the Play build, leaves updating to the store.
 
 ## Google Play build
@@ -148,3 +148,10 @@ when exactly one title has that name, otherwise the search results.
 
 Local trailer files play first (the app's own player). Otherwise the official YouTube embedded
 player (android-youtube-player, Apache-2.0) plays the title's YouTube trailer, muted.
+
+## Trademarks and warranty
+
+Jellyfin is a trademark of the Jellyfin project and YouTube is a trademark of Google LLC; both names are
+used only to describe compatibility. Jelly Cinema TV is not made or endorsed by either. The app is provided
+"as is", without warranty of any kind (GNU GPL v2, sections 11 and 12). Third-party artwork and font
+licences: see `NOTICE` and `licenses/`.

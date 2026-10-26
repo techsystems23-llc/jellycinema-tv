@@ -1,0 +1,15 @@
+{
+ "uniqueId": "jellycinema:fluent-emoji",
+ "artifactVersion": "",
+ "name": "Fluent Emoji (popcorn)",
+ "description": "The popcorn in the Jelly Cinema icon, logo and intro is based on Microsoft's Fluent Emoji",
+ "website": "https://github.com/microsoft/fluentui-emoji",
+ "developers": [
+  {
+   "name": "Microsoft Corporation"
+  }
+ ],
+ "licenses": [
+  "jc-fluent-mit"
+ ]
+}

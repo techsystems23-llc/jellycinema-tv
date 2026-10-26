@@ -13,9 +13,20 @@ app/src/main/java/org/jellyfin/androidtv/jellycinema/; every change to the origi
 in this repository's history. Jelly Cinema TV is not made or endorsed by the Jellyfin project.
 "Jellyfin" is used only to describe compatibility.
 
-Third-party parts not listed in the app's own licence screen:
-- Archivo Black font (app/src/main/res/font/jc_rank.ttf): Copyright 2017 The Archivo Black Project
-  Authors (https://github.com/Omnibus-Type/ArchivoBlack), SIL Open Font License 1.1
-  (https://openfontlicense.org).
+Third-party artwork and fonts (full licence texts in licenses/ and in the app under
+Settings → About → Licenses):
+- Popcorn in the icon, logo and intro: based on Fluent Emoji, Copyright (c) Microsoft Corporation,
+  MIT License (licenses/FluentEmoji-MIT.txt).
+- JELLY CINEMA lettering: Oswald font, Copyright 2016 The Oswald Project Authors
+  (https://github.com/googlefonts/OswaldFont), SIL Open Font License 1.1 (licenses/Oswald-OFL.txt).
+- Top 10 numbers: Archivo Black font (app/src/main/res/font/jc_rank.ttf), Copyright 2017 The Archivo
+  Black Project Authors (https://github.com/Omnibus-Type/ArchivoBlack), SIL Open Font License 1.1
+  (licenses/ArchivoBlack-OFL.txt).
 - app/src/main/res/raw/ayp_youtube_player.html: based on android-youtube-player by Pierfrancesco
   Soffritti, Apache License 2.0, modified as noted in the file.
+
+Trademarks: Jellyfin is a trademark of the Jellyfin project; YouTube is a trademark of Google LLC.
+They are used here only to describe compatibility. Jelly Cinema TV is not affiliated with either.
+
+No warranty: this program is provided "as is", without warranty of any kind, as stated in sections 11
+and 12 of the GNU General Public License (LICENSE).

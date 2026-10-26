@@ -1,0 +1,15 @@
+{
+ "uniqueId": "jellycinema:archivo-black",
+ "artifactVersion": "",
+ "name": "Archivo Black font",
+ "description": "The Top 10 rank numbers",
+ "website": "https://github.com/Omnibus-Type/ArchivoBlack",
+ "developers": [
+  {
+   "name": "The Archivo Black Project Authors"
+  }
+ ],
+ "licenses": [
+  "jc-archivo-ofl"
+ ]
+}
