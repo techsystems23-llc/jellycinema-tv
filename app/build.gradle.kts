@@ -10,7 +10,8 @@ android {
 	compileSdk = libs.versions.android.compileSdk.get().toInt()
 
 	defaultConfig {
-		minSdk = libs.versions.android.minSdk.get().toInt()
+		// Android 7.0+: Google Play's automatic app protection needs it (Jellyfin's base allows 6.0)
+		minSdk = maxOf(24, libs.versions.android.minSdk.get().toInt())
 		targetSdk = libs.versions.android.targetSdk.get().toInt()
 
 		// Release version
