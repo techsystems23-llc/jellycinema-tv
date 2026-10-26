@@ -134,4 +134,13 @@
     <string name="jc_pin_bad_password">That password didn\'t work.</string>
     <string name="jc_pin_back">Back</string>
     <string name="jc_pin_delete">Delete</string>
+    <string name="jc_support_title">Support the developer</string>
+    <string name="jc_support_caption">Jelly Cinema is free. Tips are optional</string>
+    <string name="jc_support_text">Jelly Cinema is free and always will be. If you enjoy it, a tip helps keep it going. Tips don\'t unlock anything; everyone gets the same app.</string>
+    <string name="jc_support_loading">Loading tips…</string>
+    <string name="jc_support_unavailable">Tips aren\'t available right now. Try again later.</string>
+    <string name="jc_support_thanks">Thank you for your support!</string>
+    <string name="jc_support_pending">Your tip is waiting for payment to go through. Thank you!</string>
+    <string name="jc_support_failed">The tip didn\'t go through. Nothing was charged.</string>
+    <string name="jc_support_scan">Scan with your phone to leave a tip</string>
 </resources>

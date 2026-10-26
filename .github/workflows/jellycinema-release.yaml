@@ -60,6 +60,7 @@ jobs:
             -Pjc.versionName="$JC_VERSION_NAME" -Pjc.versionCode="$JC_VERSION_CODE" \
             -Pjc.updateUrl="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/jellycinema-tv.json" \
             -Pjc.sourceUrl="https://github.com/${GITHUB_REPOSITORY}" \
+            -Pjc.supportUrl="${{ vars.JC_SUPPORT_URL }}" \
             -Pkeystore.file="$RUNNER_TEMP/jellycinema-tv.jks" -Pkeystore.password="$JC_KEYSTORE_PASSWORD" \
             -Psigning.key.alias="$JC_KEY_ALIAS" -Psigning.key.password="$JC_KEY_PASSWORD"
           rm -f "$RUNNER_TEMP/jellycinema-tv.jks"

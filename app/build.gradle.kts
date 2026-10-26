@@ -26,6 +26,10 @@ android {
 		// Where the app's source code can be downloaded (shown in Settings > About; GPL-2.0)
 		val sourceUrl = (project.findProperty("jc.sourceUrl") as String?).orEmpty().replace("\"", "")
 		buildConfigField("String", "SOURCE_URL", "\"$sourceUrl\"")
+		// "Support the developer" page for builds outside Google Play (shown as a QR code), e.g.
+		// -Pjc.supportUrl=https://ko-fi.com/<name>. Empty: the item is hidden. The Play build uses Play tips instead.
+		val supportUrl = (project.findProperty("jc.supportUrl") as String?).orEmpty().replace("\"", "")
+		buildConfigField("String", "SUPPORT_URL", "\"$supportUrl\"")
 	}
 
 	buildFeatures {
@@ -104,6 +108,7 @@ android {
 			initWith(getByName("release"))
 			matchingFallbacks += listOf("release")
 			buildConfigField("boolean", "SELF_UPDATE", "false")
+			buildConfigField("String", "SUPPORT_URL", "\"\"")
 		}
 
 		// Amazon Appstore build (Fire TV): same rules as Play, updates come from the Appstore.
@@ -112,6 +117,7 @@ android {
 			initWith(getByName("release"))
 			matchingFallbacks += listOf("release")
 			buildConfigField("boolean", "SELF_UPDATE", "false")
+			buildConfigField("String", "SUPPORT_URL", "\"\"")
 		}
 
 		debug {
@@ -129,6 +135,13 @@ android {
 			buildConfigField("boolean", "DEVELOPMENT", (defaultConfig.versionCode!! < 100).toString())
 			buildConfigField("boolean", "SELF_UPDATE", "true")
 		}
+	}
+
+	// Tips: the Play build uses Google Play's own payments (src/play), every other build a QR code (src/nonplay)
+	sourceSets {
+		getByName("release").kotlin.srcDir("src/nonplay/java")
+		getByName("debug").kotlin.srcDir("src/nonplay/java")
+		getByName("amazon").kotlin.srcDir("src/nonplay/java")
 	}
 
 	lint {
@@ -178,6 +191,8 @@ dependencies {
 
 	// Android(x)
 	implementation(libs.androidx.core)
+	implementation(libs.zxing.core)
+	add("playImplementation", libs.billing.ktx)
 	implementation(libs.androidx.activity)
 	implementation(libs.androidx.activity.compose)
 	implementation(libs.androidx.fragment)

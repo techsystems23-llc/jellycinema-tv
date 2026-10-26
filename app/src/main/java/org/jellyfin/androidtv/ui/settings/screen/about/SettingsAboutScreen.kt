@@ -61,6 +61,16 @@ fun SettingsAboutScreen(launchedFromLogin: Boolean = false) {
 			)
 		}
 
+		if (org.jellyfin.androidtv.ui.settings.screen.supportAvailable) item {
+			ListButton(
+				leadingContent = { Icon(painterResource(R.drawable.ic_heart), contentDescription = null) },
+				headingContent = { Text(stringResource(R.string.jc_support_title)) },
+				captionContent = { Text(stringResource(R.string.jc_support_caption)) },
+				onClick = { router.push(Routes.SUPPORT) },
+				modifier = Modifier.focusKey(Routes.SUPPORT)
+			)
+		}
+
 		item {
 			val heading = stringResource(R.string.pref_device_model)
 			val caption = "${Build.MANUFACTURER} ${Build.MODEL}"

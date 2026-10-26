@@ -129,6 +129,17 @@ fun SettingsMainScreen() {
 			)
 		}
 
+		if (supportAvailable) item {
+			// Jelly Cinema: optional tips (Google Play in the Play build, a QR code elsewhere)
+			ListButton(
+				leadingContent = { Icon(painterResource(R.drawable.ic_heart), contentDescription = null) },
+				headingContent = { Text(stringResource(R.string.jc_support_title)) },
+				captionContent = { Text(stringResource(R.string.jc_support_caption)) },
+				onClick = { router.push(Routes.SUPPORT) },
+				modifier = Modifier.focusKey(Routes.SUPPORT),
+			)
+		}
+
 		item {
 			ListButton(
 				leadingContent = { Icon(painterResource(R.drawable.ic_jellyfin), contentDescription = null) },
