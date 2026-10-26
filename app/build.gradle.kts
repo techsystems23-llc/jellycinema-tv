@@ -24,7 +24,9 @@ android {
 		val updateUrl = (project.findProperty("jc.updateUrl") as String?).orEmpty().replace("\"", "")
 		buildConfigField("String", "UPDATE_URL", "\"$updateUrl\"")
 		// Where the app's source code can be downloaded (shown in Settings > About; GPL-2.0)
-		val sourceUrl = (project.findProperty("jc.sourceUrl") as String?).orEmpty().replace("\"", "")
+		// GPL: everyone who gets the app must be able to get its source code, so every build carries a link
+		// (Settings → About). Defaults to the public repository; -Pjc.sourceUrl=... overrides it.
+		val sourceUrl = ((project.findProperty("jc.sourceUrl") as String?) ?: "https://github.com/techsystems23-llc/jellycinema-tv").replace("\"", "")
 		buildConfigField("String", "SOURCE_URL", "\"$sourceUrl\"")
 		// "Support the developer" page (shown as a QR code), e.g. -Pjc.supportUrl=https://ko-fi.com/<name>.
 		// Empty: the item is hidden. The Play and Amazon builds never show it (the Play version is paid instead).

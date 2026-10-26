@@ -1,0 +1,21 @@
+Jelly Cinema TV
+Copyright (C) 2026 TechSystems23 LLC
+
+Jelly Cinema TV is a modified version of the Jellyfin Android TV app
+(https://github.com/jellyfin/jellyfin-androidtv), Copyright (C) the Jellyfin contributors,
+licensed under the GNU General Public License version 2 (see LICENSE). This modified version is
+distributed under the same licence.
+
+Changes made by TechSystems23 LLC, starting October 2026: the Jelly Cinema home screen, banner,
+trailers, Theater Mode, Top 10 and holiday rows, intro, profile PINs, Kids' Home, settings, updates,
+translations and the new name and artwork. New code is mostly under
+app/src/main/java/org/jellyfin/androidtv/jellycinema/; every change to the original files is recorded
+in this repository's history. Jelly Cinema TV is not made or endorsed by the Jellyfin project.
+"Jellyfin" is used only to describe compatibility.
+
+Third-party parts not listed in the app's own licence screen:
+- Archivo Black font (app/src/main/res/font/jc_rank.ttf): Copyright 2017 The Archivo Black Project
+  Authors (https://github.com/Omnibus-Type/ArchivoBlack), SIL Open Font License 1.1
+  (https://openfontlicense.org).
+- app/src/main/res/raw/ayp_youtube_player.html: based on android-youtube-player by Pierfrancesco
+  Soffritti, Apache License 2.0, modified as noted in the file.
