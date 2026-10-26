@@ -26,8 +26,8 @@ android {
 		// Where the app's source code can be downloaded (shown in Settings > About; GPL-2.0)
 		val sourceUrl = (project.findProperty("jc.sourceUrl") as String?).orEmpty().replace("\"", "")
 		buildConfigField("String", "SOURCE_URL", "\"$sourceUrl\"")
-		// "Support the developer" page for builds outside Google Play (shown as a QR code), e.g.
-		// -Pjc.supportUrl=https://ko-fi.com/<name>. Empty: the item is hidden. The Play build uses Play tips instead.
+		// "Support the developer" page (shown as a QR code), e.g. -Pjc.supportUrl=https://ko-fi.com/<name>.
+		// Empty: the item is hidden. The Play and Amazon builds never show it (the Play version is paid instead).
 		val supportUrl = (project.findProperty("jc.supportUrl") as String?).orEmpty().replace("\"", "")
 		buildConfigField("String", "SUPPORT_URL", "\"$supportUrl\"")
 	}
@@ -137,12 +137,6 @@ android {
 		}
 	}
 
-	// Tips: the Play build uses Google Play's own payments (src/play), every other build a QR code (src/nonplay)
-	sourceSets {
-		getByName("release").kotlin.srcDir("src/nonplay/java")
-		getByName("debug").kotlin.srcDir("src/nonplay/java")
-		getByName("amazon").kotlin.srcDir("src/nonplay/java")
-	}
 
 	lint {
 		lintConfig = file("$rootDir/android-lint.xml")
@@ -192,7 +186,6 @@ dependencies {
 	// Android(x)
 	implementation(libs.androidx.core)
 	implementation(libs.zxing.core)
-	add("playImplementation", libs.billing.ktx)
 	implementation(libs.androidx.activity)
 	implementation(libs.androidx.activity.compose)
 	implementation(libs.androidx.fragment)

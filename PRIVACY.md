@@ -22,10 +22,10 @@ that your viewing stays between your TV and your own server.
   off in Settings → Crash reporting.
 - **Updates.** The version that updates itself checks the app's release page, or your server, for a
   newer version. Only the request for that file is sent.
-- **Tips, only if you choose to leave one.** Settings → Support the developer is optional. In the Google
-  Play version, tips are paid through Google Play: Google handles the payment and tells us only that a
-  tip was made, not your card or other payment details. Outside Google Play, the screen shows a QR code
-  for a tip page that opens on your phone; the app itself sends nothing. Tips don't unlock anything.
+- **Tips, only if you choose to leave one.** The free version from GitHub has Settings → Support the
+  developer, which shows a QR code for a tip page that opens on your phone; the app itself sends nothing.
+  The Google Play version has no tips or in-app purchases. Google Play handles its purchase, and we
+  don't receive your payment details.
 - **Google TV / Android TV home screen.** If your TV supports it, the app puts rows such as
   Continue watching on the TV's home screen. That information stays on the TV.
 

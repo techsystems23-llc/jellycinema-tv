@@ -44,17 +44,14 @@ Play doesn't allow apps to update themselves outside the store. `./gradlew :app:
 properties as above) makes a Play build with self-update turned off and without the install-apps
 permission. `assembleRelease` stays the sideload build that updates itself from the server.
 
-## Support the developer (tips)
+## Price and tips
 
-The app is free; tips are optional and unlock nothing. Settings → Support the developer (also in About):
-
-- **Google Play build:** tips through Google Play, the only payment Google allows in Play apps. Make three
-  one-time products in Play Console (Monetize → Products → In-app products) with the IDs `tip_small`,
-  `tip_medium` and `tip_large`; the app shows their names and prices from Play. Tips are used up right
-  away, so people can tip again.
-- **Other builds:** a QR code for the page set with `-Pjc.supportUrl=https://...` (GitHub Sponsors,
-  Ko-fi, ...). Without it the item is hidden. The Amazon build always hides it. GitHub releases use the repository
-  variable `JC_SUPPORT_URL` (Settings → Secrets and variables → Actions → Variables).
+- **Google Play version: $2.99**, a one-time convenience fee for installing and updating through Google
+  Play. Same app, no extra features, no in-app purchases; the store description says it's free on GitHub.
+- **GitHub and server versions: free.** Settings → Support the developer (also in About) shows a QR code
+  for the tip page set with `-Pjc.supportUrl=https://...`; without it the item is hidden. GitHub releases
+  use the repository variable `JC_SUPPORT_URL` (Settings → Secrets and variables → Actions → Variables).
+- The Play and Amazon builds never show the tip page: stores don't allow outside payment links.
 
 ## Keeping up with Jellyfin
 

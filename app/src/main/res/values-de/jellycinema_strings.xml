@@ -123,10 +123,5 @@
     <string name="jc_support_title">Den Entwickler unterstützen</string>
     <string name="jc_support_caption">Jelly Cinema ist kostenlos. Trinkgeld ist freiwillig</string>
     <string name="jc_support_text">Jelly Cinema ist kostenlos und bleibt es. Wenn es dir gefällt, hilft ein Trinkgeld, es weiterzuentwickeln. Trinkgeld schaltet nichts frei; alle haben dieselbe App.</string>
-    <string name="jc_support_loading">Trinkgeld wird geladen…</string>
-    <string name="jc_support_unavailable">Trinkgeld ist gerade nicht verfügbar. Versuch es später noch einmal.</string>
-    <string name="jc_support_thanks">Danke für deine Unterstützung!</string>
-    <string name="jc_support_pending">Dein Trinkgeld wartet noch auf die Zahlung. Danke!</string>
-    <string name="jc_support_failed">Das Trinkgeld hat nicht geklappt. Es wurde nichts abgebucht.</string>
     <string name="jc_support_scan">Mit dem Handy scannen, um Trinkgeld zu geben</string>
 </resources>

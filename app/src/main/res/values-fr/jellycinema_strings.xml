@@ -123,10 +123,5 @@
     <string name="jc_support_title">Soutenir le développeur</string>
     <string name="jc_support_caption">Jelly Cinema est gratuit. Les pourboires sont facultatifs</string>
     <string name="jc_support_text">Jelly Cinema est gratuit et le restera. Si vous l\'appréciez, un pourboire aide à le faire vivre. Les pourboires ne débloquent rien ; tout le monde a la même appli.</string>
-    <string name="jc_support_loading">Chargement des pourboires…</string>
-    <string name="jc_support_unavailable">Les pourboires ne sont pas disponibles pour le moment. Réessayez plus tard.</string>
-    <string name="jc_support_thanks">Merci pour votre soutien !</string>
-    <string name="jc_support_pending">Votre pourboire attend la validation du paiement. Merci !</string>
-    <string name="jc_support_failed">Le pourboire n\'a pas abouti. Rien n\'a été débité.</string>
     <string name="jc_support_scan">Scannez avec votre téléphone pour laisser un pourboire</string>
 </resources>

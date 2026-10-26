@@ -1,4 +1,7 @@
-Jelly Cinema turns your own Jellyfin server into a living-room cinema.
+Jelly Cinema turns your own Jellyfin server into a living-room cinema on Android TV and Google TV.
+
+About the price: the $2.99 is a convenience fee for installing and updating the app through Google Play.
+It doesn't buy extra features. The same app is free on GitHub: github.com/techsystems23-llc/jellycinema-tv
 
 • A big banner with each title's logo, rating and story, and its trailer playing quietly behind it
 • Theater Mode: leave the remote alone and the banner fills the screen
@@ -13,8 +16,7 @@ Jelly Cinema turns your own Jellyfin server into a living-room cinema.
 Your server, your rules: every row only shows what the signed-in person is allowed to watch, checked by an
 automatic privacy test on every version. No ads, no tracking, no account with us.
 
-Free, with nothing locked. If you enjoy it, you can leave an optional tip in Settings → Support the
-developer. Also free on GitHub.
+One purchase, no subscription, no ads, no in-app purchases.
 
 Requires a Jellyfin server (free, https://jellyfin.org) with your own media. Works with or without the
 Jelly Cinema plugin for Jellyfin.
