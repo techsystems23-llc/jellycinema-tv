@@ -78,7 +78,10 @@ object UpdateChecker {
             }
             if (json == null) return Result.Failed(app.getString(R.string.jc_update_no_info))
             val base = feed.substringBeforeLast('/') + "/"
-            val info = Json.parseToJsonElement(json).jsonObject
+            val all = Json.parseToJsonElement(json).jsonObject
+            // one file can serve several app ids: "packages": {"<app id>": {versionCode, apk, md5, abis...}};
+            // the top level is for apps that don't know about "packages"
+            val info = (all["packages"] as? kotlinx.serialization.json.JsonObject)?.get(app.packageName) as? kotlinx.serialization.json.JsonObject ?: all
             val versionCode = info["versionCode"]?.jsonPrimitive?.int ?: return Result.Failed(app.getString(R.string.jc_update_unreadable))
             val versionName = info["versionName"]?.jsonPrimitive?.content ?: versionCode.toString()
             // a smaller APK made for this TV's processor, when the update information lists them

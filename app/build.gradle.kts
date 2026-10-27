@@ -5,6 +5,8 @@ plugins {
 	alias(libs.plugins.kotlin.serialization)
 }
 
+val jcAppId = (project.findProperty("jc.appId") as String?) ?: "com.techsystems23.jellycinema"
+
 android {
 	namespace = "org.jellyfin.androidtv"
 	compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -16,7 +18,9 @@ android {
 
 		// Release version
 		// Jelly Cinema TV: replaces the earlier web-page version of the app (same id and signing key)
-		applicationId = "com.techsystems23.jellycinema"
+		// -Pjc.appId=app.jellycinema.tv builds the same app under the earlier id, so TVs that still have
+		// the earlier app can update in place from the server
+		applicationId = jcAppId
 		versionName = (project.findProperty("jc.versionName") as String?) ?: "2.0.0"
 		versionCode = ((project.findProperty("jc.versionCode") as String?) ?: "100").toInt()
 		// Where sideloaded builds look for updates first (https only), e.g. the latest GitHub release:
@@ -91,9 +95,9 @@ android {
 			proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
 
 			// Set package names used in various XML files
-			resValue("string", "app_id", "com.techsystems23.jellycinema")
-			resValue("string", "app_search_suggest_authority", "com.techsystems23.jellycinema.content")
-			resValue("string", "app_search_suggest_intent_data", "content://com.techsystems23.jellycinema.content/intent")
+			resValue("string", "app_id", jcAppId)
+			resValue("string", "app_search_suggest_authority", "${jcAppId}.content")
+			resValue("string", "app_search_suggest_intent_data", "content://${jcAppId}.content/intent")
 
 			// Set flavored application name
 			resValue("string", "app_name", "@string/app_name_release")
@@ -129,9 +133,9 @@ android {
 			applicationIdSuffix = ".debug"
 
 			// Set package names used in various XML files
-			resValue("string", "app_id", "com.techsystems23.jellycinema" + applicationIdSuffix)
-			resValue("string", "app_search_suggest_authority", "com.techsystems23.jellycinema${applicationIdSuffix}.content")
-			resValue("string", "app_search_suggest_intent_data", "content://com.techsystems23.jellycinema${applicationIdSuffix}.content/intent")
+			resValue("string", "app_id", jcAppId + applicationIdSuffix)
+			resValue("string", "app_search_suggest_authority", "${jcAppId}${applicationIdSuffix}.content")
+			resValue("string", "app_search_suggest_intent_data", "content://${jcAppId}${applicationIdSuffix}.content/intent")
 
 			// Set flavored application name
 			resValue("string", "app_name", "@string/app_name_debug")
