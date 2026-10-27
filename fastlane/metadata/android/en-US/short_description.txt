@@ -1,1 +1,1 @@
-A movie-night home screen for your own Jellyfin server: trailers, Top 10, holidays
+A movie-night home screen for Jellyfin: trailers, Top 10 and holiday rows

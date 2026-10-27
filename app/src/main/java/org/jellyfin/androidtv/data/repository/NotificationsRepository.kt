@@ -57,7 +57,9 @@ class NotificationsRepositoryImpl(
 	private fun addUiModeNotification() {
 		val disableUiModeWarning = systemPreferences[SystemPreferences.disableUiModeWarning]
 
-		if (!context.isTvDevice() && !disableUiModeWarning) {
+		// Jelly Cinema: no "use our mobile app" notice. There is no Jelly Cinema mobile app, and the app is
+		// also meant for Android TV boxes that don't report themselves as TVs.
+		if (false && !context.isTvDevice() && !disableUiModeWarning) {
 			addNotification(
 				context.getString(R.string.app_notification_uimode_invalid),
 				public = true

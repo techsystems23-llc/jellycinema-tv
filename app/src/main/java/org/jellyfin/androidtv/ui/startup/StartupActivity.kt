@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.SearchManager
 import android.content.Intent
 import android.os.Bundle
+import org.jellyfin.androidtv.jellycinema.hideSystemBars
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isVisible
@@ -109,6 +110,7 @@ class StartupActivity : FragmentActivity() {
 
 	override fun onResume() {
 		super.onResume()
+		hideSystemBars()
 
 		applyTheme()
 	}
@@ -258,5 +260,10 @@ class StartupActivity : FragmentActivity() {
 	override fun onNewIntent(intent: Intent) {
 		super.onNewIntent(intent)
 		setIntent(intent)
+	}
+
+	override fun onWindowFocusChanged(hasFocus: Boolean) {
+		super.onWindowFocusChanged(hasFocus)
+		if (hasFocus) hideSystemBars()
 	}
 }
