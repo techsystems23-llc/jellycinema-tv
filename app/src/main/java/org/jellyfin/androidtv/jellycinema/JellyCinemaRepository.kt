@@ -430,7 +430,7 @@ class JellyCinemaRepository(private val api: ApiClient) {
 	}
 
 	/** The seasonal rows that are on today, each with titles this person may open. */
-	suspend fun seasonal(today: LocalDate = LocalDate.now()): List<Pair<SeasonRow, List<BaseItemDto>>> = withContext(Dispatchers.IO) {
+	suspend fun seasonal(today: LocalDate = SeasonalPreference.rowsDate(JellyCinemaSettings.context)): List<Pair<SeasonRow, List<BaseItemDto>>> = withContext(Dispatchers.IO) {
 		val cfg = config
 		if (!cfg.seasonsEnabled) return@withContext emptyList()
 		cfg.seasonRows.filter { it.isActive(today) }.mapNotNull { row ->

@@ -49,6 +49,9 @@ object JellyCinemaSettings {
 
 	fun init(context: Context) { appContext = context.applicationContext }
 
+	/** The app context (set at start-up). */
+	val context: Context? get() = appContext
+
 	/** Text from the app's translation files (follows the TV's language). */
 	fun text(@StringRes id: Int, vararg args: Any): String = appContext?.getString(id, *args) ?: ""
 

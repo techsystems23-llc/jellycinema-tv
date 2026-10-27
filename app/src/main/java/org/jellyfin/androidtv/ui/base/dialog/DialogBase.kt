@@ -59,6 +59,16 @@ fun DialogBase(
 				decorFitsSystemWindows = false
 			),
 		) {
+			// Jelly Cinema: dialogs get their own window; keep the system bars hidden there too (TV boxes)
+			val dialogView = androidx.compose.ui.platform.LocalView.current
+			LaunchedEffect(dialogView) {
+				(dialogView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.let { w ->
+					androidx.core.view.WindowCompat.getInsetsController(w, w.decorView).apply {
+						systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+						hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+					}
+				}
+			}
 			Box(
 				modifier = modifier
 					.fillMaxSize()

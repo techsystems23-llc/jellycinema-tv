@@ -23,6 +23,24 @@ object SeasonalPreference {
 	fun get(context: Context): String = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, "") ?: ""
 	fun set(context: Context, value: String) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, value).apply()
 
+	/**
+	 * The date the holiday rows follow. Automatic: today. When a holiday's effects are chosen by hand
+	 * (Settings → Jelly Cinema → Seasonal effects), its rows show too, so people can preview a season.
+	 */
+	fun rowsDate(context: Context?, today: java.time.LocalDate = java.time.LocalDate.now()): java.time.LocalDate {
+		val y = today.year
+		return when (context?.let { get(it) }.orEmpty()) {
+			"newyear" -> java.time.LocalDate.of(y, 1, 1)
+			"valentines" -> java.time.LocalDate.of(y, 2, 10)
+			"stpatricks" -> java.time.LocalDate.of(y, 3, 14)
+			"july4" -> java.time.LocalDate.of(y, 7, 2)
+			"halloween" -> java.time.LocalDate.of(y, 10, 25)
+			"thanksgiving" -> java.time.LocalDate.of(y, 11, 20)
+			"christmas" -> java.time.LocalDate.of(y, 12, 15)
+			else -> today
+		}
+	}
+
 	fun theme(context: Context): String = when (val v = get(context)) {
 		"" -> SeasonalTheme.current()
 		"off" -> "plain"
