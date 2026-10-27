@@ -60,6 +60,7 @@ fun JellyCinemaScreensaver(onEmpty: @Composable () -> Unit) {
 		if (trailerPlaying || slides.size < 2) return@LaunchedEffect
 		val wait = if (trailerPending && repo.config.heroTrailers) 25_000L else repo.config.heroSlideSeconds * 1000L
 		delay((wait - (System.currentTimeMillis() - slideStart)).coerceAtLeast(1_500L))
+		androidx.compose.runtime.withFrameNanos { } // waits while the app is in the background
 		state.next()
 	}
 

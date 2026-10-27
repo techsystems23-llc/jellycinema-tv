@@ -76,6 +76,7 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 	private val userPreferences by inject<UserPreferences>()
 	private val userSettingPreferences by inject<UserSettingPreferences>()
 	private val userViewsRepository by inject<UserViewsRepository>()
+	private val sessionRepository by inject<org.jellyfin.androidtv.auth.repository.SessionRepository>()
 	private val dataRefreshService by inject<DataRefreshService>()
 	private val customMessageRepository by inject<CustomMessageRepository>()
 	private val navigationRepository by inject<NavigationRepository>()
@@ -122,7 +123,26 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 			// My Media, Continue Watching, Next Up, Recently Added Movies/Shows, then (added later)
 			// Because You Watched, genre rows, Collections, Watch Again.
 			val rows = mutableListOf<HomeFragmentRow>()
-			val views = userViewsRepository.views.first()
+			val views = try {
+				userViewsRepository.views.first()
+			} catch (err: org.jellyfin.sdk.api.client.exception.ApiClientException) {
+				val status = (err as? org.jellyfin.sdk.api.client.exception.InvalidStatusException)?.status
+				if (status == 401 || status == 403) {
+					// the saved sign-in no longer works (signed out on the server, password changed, server reset):
+					// go back to the start screen to sign in again, instead of crashing
+					Timber.w(err, "Sign-in no longer valid, back to the start screen")
+					withContext(Dispatchers.Main) {
+						sessionRepository.destroyCurrentSession()
+						activity?.let { a ->
+							a.startActivity(android.content.Intent(a, org.jellyfin.androidtv.ui.startup.StartupActivity::class.java))
+							a.finish()
+						}
+					}
+					return@launch
+				}
+				Timber.w(err, "Libraries failed to load")
+				emptyList()
+			}
 			rows.add(HomeFragmentViewsRow(small = false))
 			rows.add(helper.loadResumeVideo())
 			rows.add(helper.loadNextUp())

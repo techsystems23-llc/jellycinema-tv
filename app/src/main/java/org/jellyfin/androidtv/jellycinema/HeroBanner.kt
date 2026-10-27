@@ -207,7 +207,12 @@ fun HeroBackdrop(state: JellyCinemaHeroState, modifier: Modifier = Modifier) {
 		// Trailer (muted): the title's own trailer file if the library has one, else its YouTube trailer
 		val cfg = repo.config
 		val trailerItem = current
-		if (cfg.heroTrailers && trailerItem != null) {
+		// no trailers while the app is in the background (another app or the TV's home screen is showing):
+		// leaving Home stops the trailer player, so it doesn't keep streaming
+		val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+		val lifecycleState by lifecycle.currentStateFlow.collectAsState()
+		val inForeground = lifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
+		if (cfg.heroTrailers && trailerItem != null && inForeground) {
 			var source by remember(trailerItem.id) { mutableStateOf<TrailerSource?>(null) }
 			LaunchedEffect(trailerItem.id) {
 				state.trailerPlaying.value = false

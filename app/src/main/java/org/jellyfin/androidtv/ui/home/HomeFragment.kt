@@ -113,6 +113,7 @@ class HomeFragment : Fragment() {
 			if (preview != null || trailerPlaying || slides.size < 2) return@LaunchedEffect
 			val wait = if (trailerPending && cfg.heroTrailers) 25_000L else cfg.heroSlideSeconds * 1000L
 			delay((wait - (System.currentTimeMillis() - slideStart)).coerceAtLeast(1_500L))
+			withFrameNanos { } // waits while the app is in the background (no frames are drawn then)
 			heroState.next()
 		}
 
