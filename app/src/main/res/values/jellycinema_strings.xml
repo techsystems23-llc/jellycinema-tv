@@ -138,4 +138,8 @@
     <string name="jc_support_caption">Jelly Cinema is free. Tips are optional</string>
     <string name="jc_support_text">Jelly Cinema is free and always will be. If you enjoy it, a tip helps keep it going. Tips don\'t unlock anything; everyone gets the same app.</string>
     <string name="jc_support_scan">Scan with your phone to leave a tip</string>
+    <string name="jc_privacy_title">Privacy policy</string>
+    <string name="jc_privacy_caption">We don\'t collect any information about you</string>
+    <string name="jc_privacy_text">Jelly Cinema TV has no ads, tracking or analytics, and no account with us. Your libraries and what you watch go only to your own Jellyfin server. Banner trailers from YouTube use YouTube\'s player, and crash reports go to your own server only if you choose to send them.</string>
+    <string name="jc_privacy_scan">Scan with your phone to read the full policy</string>
 </resources>

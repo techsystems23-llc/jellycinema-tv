@@ -124,4 +124,8 @@
     <string name="jc_support_caption">Jelly Cinema est gratuit. Les pourboires sont facultatifs</string>
     <string name="jc_support_text">Jelly Cinema est gratuit et le restera. Si vous l\'appréciez, un pourboire aide à le faire vivre. Les pourboires ne débloquent rien ; tout le monde a la même appli.</string>
     <string name="jc_support_scan">Scannez avec votre téléphone pour laisser un pourboire</string>
+    <string name="jc_privacy_title">Politique de confidentialité</string>
+    <string name="jc_privacy_caption">Nous ne collectons aucune information sur vous</string>
+    <string name="jc_privacy_text">Jelly Cinema TV n\'a ni publicité, ni suivi, ni statistiques, et aucun compte chez nous. Vos bibliothèques et ce que vous regardez ne vont qu\'à votre propre serveur Jellyfin. Les bandes-annonces YouTube utilisent le lecteur de YouTube, et les rapports de plantage ne vont à votre serveur que si vous choisissez de les envoyer.</string>
+    <string name="jc_privacy_scan">Scannez avec votre téléphone pour lire la politique complète</string>
 </resources>

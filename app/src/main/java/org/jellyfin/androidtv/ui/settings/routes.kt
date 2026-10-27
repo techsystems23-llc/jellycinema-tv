@@ -118,6 +118,7 @@ object Routes {
 	const val TELEMETRY = "/telemetry"
 	const val JELLY_CINEMA = "/jellycinema"
 	const val SUPPORT = "/support"
+	const val PRIVACY = "/privacy"
 	const val DEVELOPER = "/developer"
 	const val ABOUT = "/about"
 	const val LICENSES = "/licenses"
@@ -306,6 +307,9 @@ val routes = mapOf<String, RouteComposable>(
 	},
 	Routes.SUPPORT to {
 		org.jellyfin.androidtv.ui.settings.screen.SettingsSupportScreen()
+	},
+	Routes.PRIVACY to {
+		org.jellyfin.androidtv.ui.settings.screen.SettingsPrivacyScreen()
 	},
 	Routes.DEVELOPER to {
 		SettingsDeveloperScreen()

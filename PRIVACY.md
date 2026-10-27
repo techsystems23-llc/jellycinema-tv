@@ -1,6 +1,6 @@
 # Jelly Cinema TV — Privacy Policy
 
-_Last updated: October 23, 2026_
+_Last updated: October 26, 2026. The current version is always at https://techsystems23.com/apps/jelly-cinema/privacy/ and in the app under Settings → About → Privacy policy._
 
 Jelly Cinema TV is an app for watching your own media from a Jellyfin server on your TV. It is built so
 that your viewing stays between your TV and your own server.

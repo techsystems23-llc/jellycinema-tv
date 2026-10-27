@@ -124,4 +124,8 @@
     <string name="jc_support_caption">Jelly Cinema ist kostenlos. Trinkgeld ist freiwillig</string>
     <string name="jc_support_text">Jelly Cinema ist kostenlos und bleibt es. Wenn es dir gefällt, hilft ein Trinkgeld, es weiterzuentwickeln. Trinkgeld schaltet nichts frei; alle haben dieselbe App.</string>
     <string name="jc_support_scan">Mit dem Handy scannen, um Trinkgeld zu geben</string>
+    <string name="jc_privacy_title">Datenschutzerklärung</string>
+    <string name="jc_privacy_caption">Wir erfassen keine Daten über dich</string>
+    <string name="jc_privacy_text">Jelly Cinema TV hat keine Werbung, kein Tracking und keine Analysen, und du brauchst kein Konto bei uns. Deine Mediatheken und was du ansiehst gehen nur an deinen eigenen Jellyfin-Server. Trailer von YouTube nutzen den YouTube-Player, und Absturzberichte gehen nur an deinen Server, wenn du sie senden möchtest.</string>
+    <string name="jc_privacy_scan">Mit dem Handy scannen, um die vollständige Erklärung zu lesen</string>
 </resources>

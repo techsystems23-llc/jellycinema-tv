@@ -58,7 +58,7 @@ fun SettingsSupportScreen() {
 
 /** A QR code drawn by the app (black on white, with the quiet border phones need to read it). */
 @Composable
-private fun QrCode(text: String, description: String) {
+internal fun QrCode(text: String, description: String) {
 	val matrix = remember(text) {
 		runCatching { QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, 0, 0, mapOf(EncodeHintType.MARGIN to 2)) }.getOrNull()
 	} ?: return

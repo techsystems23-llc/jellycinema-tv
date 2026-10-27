@@ -72,6 +72,16 @@ fun SettingsAboutScreen(launchedFromLogin: Boolean = false) {
 		}
 
 		item {
+			ListButton(
+				leadingContent = { Icon(painterResource(R.drawable.ic_info), contentDescription = null) },
+				headingContent = { Text(stringResource(R.string.jc_privacy_title)) },
+				captionContent = { Text(stringResource(R.string.jc_privacy_caption)) },
+				onClick = { router.push(Routes.PRIVACY) },
+				modifier = Modifier.focusKey(Routes.PRIVACY)
+			)
+		}
+
+		item {
 			val heading = stringResource(R.string.pref_device_model)
 			val caption = "${Build.MANUFACTURER} ${Build.MODEL}"
 			ListButton(

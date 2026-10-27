@@ -124,4 +124,8 @@
     <string name="jc_support_caption">Jelly Cinema es gratis. Las propinas son opcionales</string>
     <string name="jc_support_text">Jelly Cinema es gratis y siempre lo será. Si te gusta, una propina ayuda a mantenerlo. Las propinas no desbloquean nada; todos tienen la misma app.</string>
     <string name="jc_support_scan">Escanea con tu teléfono para dejar una propina</string>
+    <string name="jc_privacy_title">Política de privacidad</string>
+    <string name="jc_privacy_caption">No recopilamos ninguna información sobre ti</string>
+    <string name="jc_privacy_text">Jelly Cinema TV no tiene anuncios, rastreo ni analíticas, y no necesitas una cuenta con nosotros. Tus bibliotecas y lo que ves solo van a tu propio servidor Jellyfin. Los tráileres de YouTube usan el reproductor de YouTube, y los informes de fallos solo van a tu servidor si decides enviarlos.</string>
+    <string name="jc_privacy_scan">Escanea con tu teléfono para leer la política completa</string>
 </resources>
