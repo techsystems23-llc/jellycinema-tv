@@ -72,7 +72,7 @@ You need a TV or streaming box with Android TV or Google TV (Android 7.0 or newe
   extra features.
 - **Free from GitHub.** Download `jellycinema-tv.apk` from the
   [latest release](https://github.com/techsystems23-llc/jellycinema-tv/releases/latest) and install it on the TV,
-  for example with the free *Downloader* app. This version updates itself.
+  for example with the free *Downloader* app.
 
 Then open the app, pick your server (or type its address) and sign in, or use Quick Connect from the Jellyfin
 app on your phone.
